@@ -367,11 +367,11 @@ class FinanceView extends GetView<FinanceController> {
               ),
               const SizedBox(height: 24),
 
-              // Input Field
+              // Input Field dengan Rupiah formatter
               TextField(
                 controller: controller.amountController,
                 keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                inputFormatters: [_RupiahInputFormatter()],
                 style: AppTextStyles.headline.copyWith(fontSize: 32),
                 textAlign: TextAlign.center,
                 decoration: InputDecoration(
@@ -525,5 +525,46 @@ class _CircularProgressPainter extends CustomPainter {
   bool shouldRepaint(covariant _CircularProgressPainter oldDelegate) {
     return oldDelegate.progress != progress ||
         oldDelegate.progressColor != progressColor;
+  }
+}
+
+/// Custom TextInputFormatter untuk format Rupiah (100000 → 100.000)
+class _RupiahInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    // Hapus semua non-digit
+    final digitsOnly = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+
+    if (digitsOnly.isEmpty) {
+      return const TextEditingValue(
+        text: '',
+        selection: TextSelection.collapsed(offset: 0),
+      );
+    }
+
+    // Format dengan separator titik
+    final formatted = _formatWithThousandSeparator(digitsOnly);
+
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+
+  String _formatWithThousandSeparator(String digits) {
+    final buffer = StringBuffer();
+    final length = digits.length;
+
+    for (int i = 0; i < length; i++) {
+      if (i > 0 && (length - i) % 3 == 0) {
+        buffer.write('.');
+      }
+      buffer.write(digits[i]);
+    }
+
+    return buffer.toString();
   }
 }
