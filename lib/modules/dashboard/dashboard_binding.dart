@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'dashboard_controller.dart';
 import '../home/home_controller.dart';
 import '../journey/journey_controller.dart';
+import '../finance/finance_controller.dart';
 
 class DashboardBinding extends Bindings {
   @override
@@ -15,8 +16,7 @@ class DashboardBinding extends Bindings {
     // Journey Controller - untuk kalender shared journey
     Get.lazyPut<JourneyController>(() => JourneyController());
 
-    // Nanti tambahkan controller lain di sini:
-    // Get.lazyPut<FinanceController>(() => FinanceController());
-    // Get.lazyPut<ProfileController>(() => ProfileController());
+    // Finance Controller - untuk tabungan bersama
+    Get.lazyPut<FinanceController>(() => FinanceController());
   }
 }

@@ -48,4 +48,11 @@ class AppColors {
   // Text Colors
   static const Color textPrimary = darkSlate;
   static const Color textSecondary = Color(0xFF778ca3); // Abu-abu medium
+
+  // --- MONEY PALETTE (untuk preset buttons) ---
+  static const Color moneyOrange = Color(0xFFFF9F1C); // 5k
+  static const Color moneyPurple = Color(0xFF9B5DE5); // 10k
+  static const Color moneyCyan = Color(0xFF00F5D4); // 20k
+  static const Color moneyBlue = Color(0xFF00BBF9); // 50k
+  static const Color moneyPink = Color(0xFFF15BB5); // 100k
 }
