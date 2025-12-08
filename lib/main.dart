@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'core/theme/app_colors.dart';
 import 'modules/dashboard/dashboard_binding.dart';
 import 'modules/dashboard/dashboard_view.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('id', null);
   runApp(const ChiraxApp());
 }
 

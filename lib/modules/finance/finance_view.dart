@@ -7,6 +7,7 @@ import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/chunky_button.dart';
 import '../../core/widgets/chunky_card.dart';
 import 'finance_controller.dart';
+import 'manage_goals_view.dart';
 
 class FinanceView extends GetView<FinanceController> {
   const FinanceView({super.key});
@@ -16,46 +17,104 @@ class FinanceView extends GetView<FinanceController> {
     return Scaffold(
       backgroundColor: AppColors.offWhite,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // === HEADER + TABS ===
-              _buildHeader(),
+        child: Obx(() {
+          // Check if has highlighted goals
+          if (controller.highlightedGoals.isEmpty) {
+            return _buildEmptyState();
+          }
+          return _buildMainContent();
+        }),
+      ),
+    );
+  }
 
-              const SizedBox(height: 24),
-
-              // === CIRCULAR PROGRESS ===
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Obx(() => _buildCircularProgress()),
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.savings_rounded, size: 80, color: Colors.grey.shade300),
+            const SizedBox(height: 24),
+            Text(
+              'Belum Ada Target',
+              style: AppTextStyles.title.copyWith(
+                color: AppColors.textSecondary,
               ),
-
-              const SizedBox(height: 32),
-
-              // === INFO CARD ===
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Obx(() => _buildInfoCard()),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Buat target tabungan pertamamu dan mulai menabung bersama!',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.body.copyWith(
+                color: AppColors.textSecondary,
               ),
-
-              const SizedBox(height: 24),
-
-              // === ACTION BUTTON ===
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: ChunkyButton(
-                  text: 'TAMBAH TABUNGAN',
-                  icon: Icons.add_rounded,
-                  color: AppColors.primary,
-                  onPressed: () => _showAddSavingsSheet(),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-            ],
-          ),
+            ),
+            const SizedBox(height: 32),
+            ChunkyButton(
+              text: 'BUAT TARGET BARU',
+              icon: Icons.add_rounded,
+              color: AppColors.primary,
+              onPressed: () => Get.to(() => const ManageGoalsView()),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildMainContent() {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // === HEADER + TABS ===
+          _buildHeader(),
+
+          const SizedBox(height: 24),
+
+          // === CIRCULAR PROGRESS ===
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Obx(() => _buildCircularProgress()),
+          ),
+
+          const SizedBox(height: 32),
+
+          // === INFO CARD ===
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Obx(() => _buildInfoCard()),
+          ),
+
+          const SizedBox(height: 24),
+
+          // === ACTION BUTTON ===
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: ChunkyButton(
+              text: 'TAMBAH TABUNGAN',
+              icon: Icons.add_rounded,
+              color: AppColors.primary,
+              onPressed: () => _showAddSavingsSheet(),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // === MANAGE BUTTON ===
+          TextButton.icon(
+            onPressed: () => Get.to(() => const ManageGoalsView()),
+            icon: const Icon(Icons.settings_rounded, size: 20),
+            label: const Text('Kelola Target & Riwayat'),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.textSecondary,
+            ),
+          ),
+
+          const SizedBox(height: 24),
+        ],
       ),
     );
   }
@@ -91,16 +150,15 @@ class FinanceView extends GetView<FinanceController> {
           ),
           const SizedBox(height: 20),
 
-          // Goal Tabs - wrap with Obx
+          // Goal Tabs - highlighted only
           Obx(() => _buildGoalTabs()),
         ],
       ),
     );
   }
 
-  /// Goal Tabs - using Row for proper reactivity
   Widget _buildGoalTabs() {
-    // Access value directly to force observe
+    final highlighted = controller.highlightedGoals;
     final selectedIdx = controller.selectedIndex.value;
 
     return SizedBox(
@@ -108,8 +166,8 @@ class FinanceView extends GetView<FinanceController> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
-          children: List.generate(controller.goals.length, (index) {
-            final goal = controller.goals[index];
+          children: List.generate(highlighted.length, (index) {
+            final goal = highlighted[index];
             final isSelected = selectedIdx == index;
 
             return GestureDetector(
@@ -166,6 +224,8 @@ class FinanceView extends GetView<FinanceController> {
 
   Widget _buildCircularProgress() {
     final goal = controller.currentGoal;
+    if (goal == null) return const SizedBox.shrink();
+
     final progress = controller.progressPercentage;
 
     return SizedBox(
@@ -210,12 +270,12 @@ class FinanceView extends GetView<FinanceController> {
 
   Widget _buildInfoCard() {
     final goal = controller.currentGoal;
+    if (goal == null) return const SizedBox.shrink();
 
     return ChunkyCard(
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          // Terkumpul
           _buildInfoRow(
             emoji: '💵',
             label: 'Terkumpul',
@@ -226,8 +286,6 @@ class FinanceView extends GetView<FinanceController> {
           const SizedBox(height: 12),
           Divider(color: Colors.grey.shade200, thickness: 2),
           const SizedBox(height: 12),
-
-          // Target
           _buildInfoRow(
             emoji: '🎯',
             label: 'Target',
@@ -237,7 +295,6 @@ class FinanceView extends GetView<FinanceController> {
           ),
           const SizedBox(height: 16),
 
-          // Status
           if (!controller.isCompleted)
             Container(
               width: double.infinity,
@@ -327,7 +384,6 @@ class FinanceView extends GetView<FinanceController> {
     );
   }
 
-  /// Bottom Sheet untuk tambah tabungan
   void _showAddSavingsSheet() {
     controller.amountController.clear();
 
@@ -346,7 +402,6 @@ class FinanceView extends GetView<FinanceController> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -367,7 +422,6 @@ class FinanceView extends GetView<FinanceController> {
               ),
               const SizedBox(height: 24),
 
-              // Input Field dengan Rupiah formatter
               TextField(
                 controller: controller.amountController,
                 keyboardType: TextInputType.number,
@@ -395,16 +449,13 @@ class FinanceView extends GetView<FinanceController> {
               ),
               const SizedBox(height: 24),
 
-              // Preset Buttons Label
               Text('Pilih Nominal:', style: AppTextStyles.subtitle),
               const SizedBox(height: 12),
 
-              // Preset Grid
               _buildPresetGrid(),
 
               const SizedBox(height: 24),
 
-              // Submit Button dengan shadow hijau tua
               ChunkyButton(
                 text: 'SIMPAN TABUNGAN',
                 icon: Icons.savings_rounded,
@@ -476,7 +527,6 @@ class FinanceView extends GetView<FinanceController> {
   }
 }
 
-/// Custom Painter untuk Circular Progress
 class _CircularProgressPainter extends CustomPainter {
   final double progress;
   final Color progressColor;
@@ -528,14 +578,12 @@ class _CircularProgressPainter extends CustomPainter {
   }
 }
 
-/// Custom TextInputFormatter untuk format Rupiah (100000 → 100.000)
 class _RupiahInputFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
-    // Hapus semua non-digit
     final digitsOnly = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
 
     if (digitsOnly.isEmpty) {
@@ -545,7 +593,6 @@ class _RupiahInputFormatter extends TextInputFormatter {
       );
     }
 
-    // Format dengan separator titik
     final formatted = _formatWithThousandSeparator(digitsOnly);
 
     return TextEditingValue(

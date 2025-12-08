@@ -7,15 +7,23 @@ class SavingsGoal {
   final double currentAmount;
   final String iconEmoji;
   final Color color;
+  final bool isHighlighted;
+  final bool isCompleted;
+  final DateTime? completedDate;
+  final DateTime createdDate;
 
   SavingsGoal({
     required this.id,
     required this.title,
     required this.targetAmount,
-    required this.currentAmount,
+    this.currentAmount = 0,
     required this.iconEmoji,
     required this.color,
-  });
+    this.isHighlighted = false,
+    this.isCompleted = false,
+    this.completedDate,
+    DateTime? createdDate,
+  }) : createdDate = createdDate ?? DateTime.now();
 
   /// Progress percentage (0.0 - 1.0)
   double get progressPercentage {
@@ -27,8 +35,8 @@ class SavingsGoal {
   /// Progress percentage as integer (0 - 100)
   int get progressPercent => (progressPercentage * 100).round();
 
-  /// Is goal completed?
-  bool get isCompleted => currentAmount >= targetAmount;
+  /// Is goal target reached?
+  bool get isTargetReached => currentAmount >= targetAmount;
 
   /// Remaining amount
   double get remainingAmount =>
@@ -42,6 +50,10 @@ class SavingsGoal {
     double? currentAmount,
     String? iconEmoji,
     Color? color,
+    bool? isHighlighted,
+    bool? isCompleted,
+    DateTime? completedDate,
+    DateTime? createdDate,
   }) {
     return SavingsGoal(
       id: id ?? this.id,
@@ -50,6 +62,10 @@ class SavingsGoal {
       currentAmount: currentAmount ?? this.currentAmount,
       iconEmoji: iconEmoji ?? this.iconEmoji,
       color: color ?? this.color,
+      isHighlighted: isHighlighted ?? this.isHighlighted,
+      isCompleted: isCompleted ?? this.isCompleted,
+      completedDate: completedDate ?? this.completedDate,
+      createdDate: createdDate ?? this.createdDate,
     );
   }
 }
