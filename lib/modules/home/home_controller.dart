@@ -1,4 +1,7 @@
 import 'package:get/get.dart';
+import '../../core/widgets/all_clear_dialog.dart';
+import '../../data/models/quest_model.dart';
+import '../profile/profile_controller.dart';
 
 /// Pet Status Enum untuk visual state
 enum PetStatus { happy, sad, sleeping, hungry }
@@ -37,11 +40,17 @@ class HomeController extends GetxController {
   final userName = 'Axel'.obs;
   final partnerName = 'Gea'.obs;
 
+  // === PARTNER DATA ===
+  final partnerAvatar = 'assets/images/avatar_partner.png'.obs;
+  final partnerStatusEmoji = '💤'.obs;
+  final partnerStatusText = 'Sedang Tidur'.obs;
+  final isPartnerOnline = false.obs;
+  final partnerLevel = 5.obs;
+  final partnerStreak = 12.obs;
+
   // === RELATIONSHIP DATA ===
-  // Tanggal mulai hubungan (default: 1 tahun lalu)
   final startDate = DateTime.now().subtract(const Duration(days: 365)).obs;
 
-  // Getter: Hitung jumlah hari bersama
   int get daysTogether {
     final now = DateTime.now();
     return now.difference(startDate.value).inDays;
@@ -51,6 +60,9 @@ class HomeController extends GetxController {
   final streakCount = 12.obs;
   final petStatus = PetStatus.hungry.obs;
   final isDailyQuestCompleted = false.obs;
+
+  // === DAILY QUESTS ===
+  final dailyQuests = <QuestModel>[].obs;
 
   // === PET DATA ===
   final petName = 'Mochi'.obs;
@@ -80,21 +92,155 @@ class HomeController extends GetxController {
     }
   }
 
+  // === QUEST METHODS ===
+
+  /// Initialize daily quests
+  void _initDailyQuests() {
+    dailyQuests.value = [
+      QuestModel(
+        id: 'quest_savings',
+        title: 'Investasi Cinta',
+        description: 'Nabung 1x hari ini',
+        currentProgress: 0,
+        targetProgress: 1,
+        rewardXP: 20,
+        rewardIcon: '🥉',
+        type: 'savings',
+      ),
+      QuestModel(
+        id: 'quest_journey',
+        title: 'Planner Sejati',
+        description: 'Buat 1 event baru',
+        currentProgress: 0,
+        targetProgress: 1,
+        rewardXP: 30,
+        rewardIcon: '🥈',
+        type: 'journey',
+      ),
+      QuestModel(
+        id: 'quest_interaction',
+        title: 'Kangen Berat',
+        description: 'Interaksi 3x',
+        currentProgress: 0,
+        targetProgress: 3,
+        rewardXP: 50,
+        rewardIcon: '🥇',
+        type: 'interaction',
+      ),
+    ];
+  }
+
+  /// Update quest progress by type
+  void updateQuestProgress(String type) {
+    final index = dailyQuests.indexWhere((q) => q.type == type);
+    if (index != -1) {
+      final quest = dailyQuests[index];
+      if (!quest.isCompleted && !quest.isClaimed) {
+        quest.currentProgress++;
+        dailyQuests.refresh();
+
+        // Show notification if completed
+        if (quest.isCompleted) {
+          Get.snackbar(
+            '🎉 Misi Selesai!',
+            '${quest.title} - Tap untuk klaim ${quest.rewardXP} XP!',
+            snackPosition: SnackPosition.TOP,
+            duration: const Duration(seconds: 3),
+          );
+        }
+      }
+    }
+  }
+
+  /// Claim completed quest
+  void claimQuest(QuestModel quest) {
+    if (quest.isCompleted && !quest.isClaimed) {
+      final index = dailyQuests.indexWhere((q) => q.id == quest.id);
+      if (index != -1) {
+        dailyQuests[index].isClaimed = true;
+        dailyQuests.refresh();
+
+        // Add XP to profile
+        try {
+          final profileController = Get.find<ProfileController>();
+          profileController.addXP(quest.rewardXP);
+        } catch (e) {
+          // ProfileController not found, just show snackbar
+        }
+
+        Get.snackbar(
+          '✨ Quest Claimed!',
+          '+${quest.rewardXP} XP didapatkan!',
+          snackPosition: SnackPosition.TOP,
+          duration: const Duration(seconds: 2),
+        );
+
+        // Check if all quests are claimed (ALL CLEAR!)
+        _checkAllClearCombo();
+      }
+    }
+  }
+
+  /// Check if all daily quests are claimed -> trigger All Clear celebration
+  void _checkAllClearCombo() {
+    if (dailyQuests.isEmpty) return;
+
+    final allClaimed = dailyQuests.every((q) => q.isClaimed);
+
+    if (allClaimed) {
+      // Add bonus 50 XP
+      try {
+        final profileController = Get.find<ProfileController>();
+        profileController.addXP(50);
+      } catch (e) {
+        // ProfileController not found
+      }
+
+      // Show All Clear Dialog
+      Get.dialog(const AllClearDialog(), barrierDismissible: false);
+    }
+  }
+
+  // === PARTNER ACTIONS ===
+
+  void pokePartner() {
+    updateQuestProgress('interaction');
+    Get.snackbar(
+      '👋 Colek!',
+      'Kamu mencolek ${partnerName.value}!',
+      snackPosition: SnackPosition.TOP,
+      duration: const Duration(seconds: 2),
+    );
+  }
+
+  void sendLove() {
+    updateQuestProgress('interaction');
+    Get.snackbar(
+      '❤️ Rindu Terkirim!',
+      '${partnerName.value} menerima cintamu 💕',
+      snackPosition: SnackPosition.TOP,
+      duration: const Duration(seconds: 2),
+    );
+  }
+
+  void notifyPartner() {
+    updateQuestProgress('interaction');
+    Get.snackbar(
+      '📢 Notif Terkirim!',
+      '${partnerName.value} akan segera buka app!',
+      snackPosition: SnackPosition.TOP,
+      duration: const Duration(seconds: 2),
+    );
+  }
+
   // === ACTIONS ===
 
-  /// Complete daily quest - ubah status pet dan tambah streak
   void completeDailyQuest() {
     if (!isDailyQuestCompleted.value) {
-      // Mark quest as completed
       isDailyQuestCompleted.value = true;
-
-      // Make pet happy
       petStatus.value = PetStatus.happy;
-
-      // Increment streak
       streakCount.value++;
-
-      // Show snackbar feedback
+      updateQuestProgress('interaction');
       Get.snackbar(
         '💕 Love Sent!',
         'Your pet is now happy! Streak: ${streakCount.value} days',
@@ -102,7 +248,6 @@ class HomeController extends GetxController {
         duration: const Duration(seconds: 2),
       );
     } else {
-      // Already completed today
       Get.snackbar(
         '✨ Already Done!',
         'You\'ve already checked in today. See you tomorrow!',
@@ -112,7 +257,6 @@ class HomeController extends GetxController {
     }
   }
 
-  /// Feed the pet - bisa digunakan untuk action lain
   void feedPet() {
     if (petStatus.value == PetStatus.hungry) {
       petStatus.value = PetStatus.happy;
@@ -125,7 +269,6 @@ class HomeController extends GetxController {
     }
   }
 
-  /// Reset daily quest (untuk testing atau new day)
   void resetDailyQuest() {
     isDailyQuestCompleted.value = false;
     petStatus.value = PetStatus.hungry;
@@ -134,6 +277,6 @@ class HomeController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    // Bisa tambahkan logic untuk cek hari baru dan reset quest
+    _initDailyQuests();
   }
 }

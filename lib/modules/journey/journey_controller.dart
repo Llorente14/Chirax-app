@@ -1,3 +1,4 @@
+import 'package:chirax/modules/home/home_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../core/theme/app_colors.dart';
@@ -62,6 +63,7 @@ class JourneyController extends GetxController {
     required DateTime date,
     required int categoryIndex,
     bool isSurprise = false,
+    bool updateQuest = true,
   }) {
     final category = EventCategory.categories[categoryIndex];
     final normalizedDate = _normalizeDate(date);
@@ -81,7 +83,17 @@ class JourneyController extends GetxController {
     } else {
       events[normalizedDate] = [newEvent];
     }
+
     events.refresh();
+
+    // Hook to quest system - update journey quest progress
+    if (updateQuest) {
+      try {
+        Get.find<HomeController>().updateQuestProgress('journey');
+      } catch (e) {
+        // HomeController not ready yet, skip
+      }
+    }
   }
 
   void deleteEvent(JourneyEvent event) {
@@ -108,14 +120,20 @@ class JourneyController extends GetxController {
   void _loadDummyData() {
     final now = DateTime.now();
 
-    // Today
-    addEvent(title: 'Dinner Date', date: now, categoryIndex: 0);
+    // Today - updateQuest: false to skip quest update during init
+    addEvent(
+      title: 'Dinner Date',
+      date: now,
+      categoryIndex: 0,
+      updateQuest: false,
+    );
 
     // 3 days
     addEvent(
       title: 'Monthly Anniversary',
       date: now.add(const Duration(days: 3)),
       categoryIndex: 1,
+      updateQuest: false,
     );
 
     // 7 days
@@ -123,6 +141,7 @@ class JourneyController extends GetxController {
       title: 'Trip to Bandung',
       date: now.add(const Duration(days: 7)),
       categoryIndex: 2,
+      updateQuest: false,
     );
   }
 
@@ -139,147 +158,252 @@ void showAddEventSheet(JourneyController controller) {
   final date = controller.selectedDay.value;
 
   Get.bottomSheet(
-    Container(
-      padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Handle
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
+    StatefulBuilder(
+      builder: (context, setState) {
+        bool isButtonPressed = false;
 
-            // Header
-            Row(
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(28),
+              topRight: Radius.circular(28),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.shade300,
+                offset: const Offset(0, -4),
+                blurRadius: 0,
+              ),
+            ],
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('✨ Add Event', style: AppTextStyles.title),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '${date.day}/${date.month}',
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w700,
+                // Handle
+                Center(
+                  child: Container(
+                    width: 48,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(3),
                     ),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 24),
+                const SizedBox(height: 20),
 
-            // Title field
-            TextField(
-              controller: controller.titleController,
-              decoration: InputDecoration(
-                hintText: 'Event title...',
-                filled: true,
-                fillColor: AppColors.offWhite,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Category
-            Text('Category', style: AppTextStyles.subtitle),
-            const SizedBox(height: 12),
-            Obx(
-              () => Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: List.generate(EventCategory.categories.length, (i) {
-                  final cat = EventCategory.categories[i];
-                  final isSelected =
-                      controller.selectedCategoryIndex.value == i;
-                  return GestureDetector(
-                    onTap: () => controller.selectedCategoryIndex.value = i,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
-                      ),
+                // Header
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: isSelected
-                            ? cat.color
-                            : cat.color.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: cat.color, width: 2),
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Text(
-                        '${cat.icon} ${cat.label}',
-                        style: TextStyle(
-                          color: isSelected ? Colors.white : cat.color,
-                          fontWeight: FontWeight.w600,
+                      child: const Text('📅', style: TextStyle(fontSize: 24)),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Tambah Event', style: AppTextStyles.title),
+                          Text(
+                            '${date.day}/${date.month}/${date.year}',
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Close button
+                    GestureDetector(
+                      onTap: () => Get.back(),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.close_rounded,
+                          color: Colors.grey.shade500,
+                          size: 20,
                         ),
                       ),
                     ),
-                  );
-                }),
-              ),
-            ),
-            const SizedBox(height: 24),
+                  ],
+                ),
+                const SizedBox(height: 24),
 
-            // Add button
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: () {
-                  if (controller.titleController.text.isNotEmpty) {
-                    controller.addEvent(
-                      title: controller.titleController.text,
-                      date: date,
-                      categoryIndex: controller.selectedCategoryIndex.value,
-                    );
-                    Get.back();
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.success,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                child: const Text(
-                  'ADD EVENT',
-                  style: TextStyle(
+                // Title field with 3D border
+                Text('Judul Event', style: AppTextStyles.subtitle),
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
                     color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.grey.shade300, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.shade200,
+                        offset: const Offset(0, 3),
+                        blurRadius: 0,
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: controller.titleController,
+                    decoration: InputDecoration(
+                      hintText: 'Contoh: Dinner Date...',
+                      hintStyle: TextStyle(color: Colors.grey.shade400),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      border: InputBorder.none,
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(height: 20),
+
+                // Category
+                Text('Kategori', style: AppTextStyles.subtitle),
+                const SizedBox(height: 10),
+                Obx(
+                  () => Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: List.generate(EventCategory.categories.length, (
+                      i,
+                    ) {
+                      final cat = EventCategory.categories[i];
+                      final isSelected =
+                          controller.selectedCategoryIndex.value == i;
+                      return GestureDetector(
+                        onTap: () => controller.selectedCategoryIndex.value = i,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? cat.color
+                                : cat.color.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: cat.color, width: 2.5),
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: cat.color.withValues(alpha: 0.4),
+                                      offset: const Offset(0, 3),
+                                      blurRadius: 0,
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                cat.icon,
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                cat.label,
+                                style: TextStyle(
+                                  color: isSelected ? Colors.white : cat.color,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+                const SizedBox(height: 28),
+
+                // Add button - 3D Bouncy Style
+                StatefulBuilder(
+                  builder: (context, setButtonState) {
+                    return GestureDetector(
+                      onTapDown: (_) =>
+                          setButtonState(() => isButtonPressed = true),
+                      onTapUp: (_) {
+                        setButtonState(() => isButtonPressed = false);
+                        if (controller.titleController.text.isNotEmpty) {
+                          controller.addEvent(
+                            title: controller.titleController.text,
+                            date: date,
+                            categoryIndex:
+                                controller.selectedCategoryIndex.value,
+                          );
+                        }
+                        Get.back();
+                      },
+                      onTapCancel: () =>
+                          setButtonState(() => isButtonPressed = false),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 100),
+                        transform: Matrix4.translationValues(
+                          0,
+                          isButtonPressed ? 4 : 0,
+                          0,
+                        ),
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: AppColors.success,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.successShadow,
+                              offset: Offset(0, isButtonPressed ? 2 : 5),
+                              blurRadius: 0,
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.add_rounded,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'TAMBAH EVENT',
+                              style: AppTextStyles.button.copyWith(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
             ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     ),
     isScrollControlled: true,
   );

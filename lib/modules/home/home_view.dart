@@ -5,6 +5,7 @@ import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/chunky_button.dart';
 import '../../core/widgets/chunky_card.dart';
 import '../../data/models/journey_event.dart';
+import '../../data/models/quest_model.dart';
 import '../journey/journey_controller.dart';
 import 'home_controller.dart';
 
@@ -50,7 +51,12 @@ class HomeView extends GetView<HomeController> {
                   // === PET AREA ===
                   _buildPetArea(),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
+
+                  // === DAILY QUESTS ===
+                  _buildDailyQuestsSection(),
+
+                  const SizedBox(height: 24),
 
                   // === ACTION BUTTONS ===
                   _buildActionButtons(),
@@ -113,25 +119,94 @@ class HomeView extends GetView<HomeController> {
                 ),
               ),
 
-              // Partner Avatar (small circle)
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.primary, width: 3),
-                ),
-                child: Center(
-                  child: Obx(
-                    () => Text(
-                      controller.partnerName.value.isNotEmpty
-                          ? controller.partnerName.value[0].toUpperCase()
-                          : '💕',
-                      style: AppTextStyles.title.copyWith(
-                        color: AppColors.primary,
+              // Partner Avatar (JuicyAvatar style - Squircle 3D)
+              GestureDetector(
+                onTap: () => _showPartnerSheet(),
+                child: SizedBox(
+                  width: 52,
+                  height: 50, // Extra space for shadow + badge
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      // Shadow layer
+                      Container(
+                        margin: const EdgeInsets.only(top: 3),
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: AppColors.secondary,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                       ),
-                    ),
+                      // Avatar container
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppColors.secondary,
+                            width: 3,
+                          ),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Obx(
+                            () => Image.asset(
+                              controller.partnerAvatar.value,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: AppColors.secondary.withValues(
+                                    alpha: 0.2,
+                                  ),
+                                  child: Center(
+                                    child: Obx(
+                                      () => Text(
+                                        controller.partnerName.value.isNotEmpty
+                                            ? controller.partnerName.value[0]
+                                                  .toUpperCase()
+                                            : '💕',
+                                        style: AppTextStyles.title.copyWith(
+                                          color: AppColors.secondary,
+                                          fontSize: 18,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Status Emoji Badge
+                      Positioned(
+                        right: -4,
+                        bottom: -2,
+                        child: Obx(
+                          () => Container(
+                            width: 22,
+                            height: 22,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppColors.secondary,
+                                width: 2,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                controller.partnerStatusEmoji.value,
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -139,6 +214,302 @@ class HomeView extends GetView<HomeController> {
           ),
         ],
       ),
+    );
+  }
+
+  /// Partner Bottom Sheet
+  void _showPartnerSheet() {
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(28),
+            topRight: Radius.circular(28),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+
+            // Partner Avatar (Large)
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // Shadow
+                Container(
+                  margin: const EdgeInsets.only(top: 5),
+                  width: 90,
+                  height: 90,
+                  decoration: BoxDecoration(
+                    color: AppColors.secondary,
+                    borderRadius: BorderRadius.circular(28),
+                  ),
+                ),
+                // Avatar
+                Container(
+                  width: 90,
+                  height: 90,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(color: AppColors.secondary, width: 4),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(23),
+                    child: Obx(
+                      () => Image.asset(
+                        controller.partnerAvatar.value,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: AppColors.secondary.withValues(alpha: 0.2),
+                            child: Center(
+                              child: Text(
+                                controller.partnerName.value[0].toUpperCase(),
+                                style: AppTextStyles.headline.copyWith(
+                                  color: AppColors.secondary,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+                // Online indicator
+                Positioned(
+                  right: -4,
+                  bottom: 0,
+                  child: Obx(
+                    () => Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: controller.isPartnerOnline.value
+                            ? AppColors.success
+                            : Colors.grey,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 3),
+                      ),
+                      child: Center(
+                        child: Text(
+                          controller.partnerStatusEmoji.value,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // Partner Name
+            Obx(
+              () => Text(
+                controller.partnerName.value,
+                style: AppTextStyles.headline.copyWith(fontSize: 24),
+              ),
+            ),
+
+            const SizedBox(height: 4),
+
+            // Status Text
+            Obx(
+              () => Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    controller.partnerStatusEmoji.value,
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    controller.partnerStatusText.value,
+                    style: AppTextStyles.body.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Stats Row
+            Obx(
+              () => Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Level
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.moneyOrange.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        const Text('⚡', style: TextStyle(fontSize: 16)),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Level ${controller.partnerLevel.value}',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.moneyOrange,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Streak
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.secondary.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        const Text('🔥', style: TextStyle(fontSize: 16)),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${controller.partnerStreak.value} Streak',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.secondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Action Buttons
+            Row(
+              children: [
+                // Colek Button
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      Get.back();
+                      controller.pokePartner();
+                    },
+                    child: Container(
+                      height: 54,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primaryShadow,
+                            offset: const Offset(0, 4),
+                            blurRadius: 0,
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          '👋 Colek',
+                          style: AppTextStyles.button.copyWith(fontSize: 14),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                // Rindu Button
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      Get.back();
+                      controller.sendLove();
+                    },
+                    child: Container(
+                      height: 54,
+                      decoration: BoxDecoration(
+                        color: AppColors.secondary,
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: AppColors.secondaryShadow,
+                            offset: Offset(0, 4),
+                            blurRadius: 0,
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          '❤️ Rindu',
+                          style: AppTextStyles.button.copyWith(fontSize: 14),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                // Notif Button
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      Get.back();
+                      controller.notifyPartner();
+                    },
+                    child: Container(
+                      height: 54,
+                      decoration: BoxDecoration(
+                        color: AppColors.success,
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.successShadow,
+                            offset: const Offset(0, 4),
+                            blurRadius: 0,
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          '📢 Cek App',
+                          style: AppTextStyles.button.copyWith(fontSize: 14),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+      isScrollControlled: true,
     );
   }
 
@@ -162,6 +533,207 @@ class HomeView extends GetView<HomeController> {
         ),
       ],
     );
+  }
+
+  /// Daily Quests Section - Clean Light Style
+  Widget _buildDailyQuestsSection() {
+    return Obx(() {
+      final quests = controller.dailyQuests;
+      if (quests.isEmpty) return const SizedBox.shrink();
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              const Text('🎯', style: TextStyle(fontSize: 20)),
+              const SizedBox(width: 8),
+              Text(
+                'MISI HARIAN',
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${quests.where((q) => q.isCompleted).length}/${quests.length}',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.success,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Quest List
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: quests.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 10),
+            itemBuilder: (context, index) {
+              final quest = quests[index];
+              return _buildQuestItem(quest);
+            },
+          ),
+        ],
+      );
+    });
+  }
+
+  /// Individual Quest Item - Light Card Style
+  Widget _buildQuestItem(QuestModel quest) {
+    final canClaim = quest.isCompleted && !quest.isClaimed;
+
+    return GestureDetector(
+      onTap: canClaim ? () => controller.claimQuest(quest) : null,
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: canClaim ? AppColors.success : Colors.grey.shade200,
+            width: canClaim ? 2.5 : 2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: canClaim ? AppColors.successShadow : Colors.grey.shade200,
+              offset: const Offset(0, 4),
+              blurRadius: 0,
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Left: Title & Description
+            Expanded(
+              flex: 3,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    quest.title,
+                    style: AppTextStyles.subtitle.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    quest.description,
+                    style: AppTextStyles.body.copyWith(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(width: 14),
+
+            // Center: Progress Bar
+            Expanded(
+              flex: 2,
+              child: Column(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: LinearProgressIndicator(
+                      value: quest.progressPercentage,
+                      backgroundColor: Colors.grey.shade200,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        quest.isCompleted
+                            ? AppColors.success
+                            : AppColors.primary,
+                      ),
+                      minHeight: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    quest.progressText,
+                    style: AppTextStyles.body.copyWith(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(width: 14),
+
+            // Right: Reward Icon
+            _buildRewardIcon(quest),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Reward Icon with state
+  Widget _buildRewardIcon(QuestModel quest) {
+    if (quest.isClaimed) {
+      // Claimed - Show checkmark
+      return Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: AppColors.success.withValues(alpha: 0.2),
+          shape: BoxShape.circle,
+        ),
+        child: const Center(child: Text('✅', style: TextStyle(fontSize: 24))),
+      );
+    } else if (quest.isCompleted) {
+      // Completed but not claimed - Glowing chest
+      return Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: AppColors.success.withValues(alpha: 0.2),
+          shape: BoxShape.circle,
+          border: Border.all(color: AppColors.success, width: 2),
+        ),
+        child: Center(
+          child: Text(quest.rewardIcon, style: const TextStyle(fontSize: 24)),
+        ),
+      );
+    } else {
+      // Not completed - Normal chest
+      return Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          shape: BoxShape.circle,
+        ),
+        child: Center(
+          child: Opacity(
+            opacity: 0.5,
+            child: Text(quest.rewardIcon, style: const TextStyle(fontSize: 24)),
+          ),
+        ),
+      );
+    }
   }
 
   /// Countdown Widget untuk event besar berikutnya

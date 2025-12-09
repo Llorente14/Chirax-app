@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/widgets/bouncy_widgets.dart';
 import '../../core/widgets/chunky_button.dart';
 import '../../core/widgets/chunky_card.dart';
 import 'finance_controller.dart';
@@ -488,21 +489,17 @@ class FinanceView extends GetView<FinanceController> {
       runSpacing: 12,
       children: presets.map((preset) {
         final color = preset['color'] as Color;
-        return GestureDetector(
+        return Bouncy3DButton(
           onTap: () => controller.setPresetToInput(preset['amount'] as int),
+          shadowColor: _getDarkerColor(color),
+          shadowHeight: 4,
+          borderRadius: BorderRadius.circular(14),
           child: Container(
             width: 100,
             height: 50,
             decoration: BoxDecoration(
               color: color,
               borderRadius: BorderRadius.circular(14),
-              boxShadow: [
-                BoxShadow(
-                  color: _getDarkerColor(color),
-                  offset: const Offset(0, 4),
-                  blurRadius: 0,
-                ),
-              ],
             ),
             child: Center(
               child: Text(

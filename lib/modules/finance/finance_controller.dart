@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/savings_goal.dart';
+import '../home/home_controller.dart';
 
 class FinanceController extends GetxController {
   // === GOALS LIST ===
@@ -169,6 +170,11 @@ class FinanceController extends GetxController {
     );
     goals.refresh();
 
+    // Hook to quest system - update savings quest progress
+    if (Get.isRegistered<HomeController>()) {
+      Get.find<HomeController>().updateQuestProgress('savings');
+    }
+
     // Celebration if target reached
     if (goals[index].isTargetReached && !goal.isTargetReached) {
       Get.snackbar(
@@ -193,9 +199,15 @@ class FinanceController extends GetxController {
     }
   }
 
-  /// Set preset to input field
+  /// Add preset to input field (additive/multiply)
   void setPresetToInput(int amount) {
-    amountController.text = formatInputNumber(amount);
+    // Get current value from input
+    final currentText = amountController.text.replaceAll(RegExp(r'[^0-9]'), '');
+    final currentAmount = int.tryParse(currentText) ?? 0;
+
+    // Add the preset amount to current value
+    final newAmount = currentAmount + amount;
+    amountController.text = formatInputNumber(newAmount);
   }
 
   /// Format input number with separator
