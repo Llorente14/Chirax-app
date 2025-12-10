@@ -1,39 +1,10 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:lottie/lottie.dart';
 import '../../core/widgets/all_clear_dialog.dart';
+import '../../core/widgets/pet_avatar.dart';
 import '../../data/models/quest_model.dart';
 import '../profile/profile_controller.dart';
-
-/// Pet Status Enum untuk visual state
-enum PetStatus { happy, sad, sleeping, hungry }
-
-/// Extension untuk mendapatkan emoji berdasarkan status
-extension PetStatusExtension on PetStatus {
-  String get emoji {
-    switch (this) {
-      case PetStatus.happy:
-        return '😽';
-      case PetStatus.sad:
-        return '😿';
-      case PetStatus.sleeping:
-        return '😴';
-      case PetStatus.hungry:
-        return '🍖';
-    }
-  }
-
-  String get label {
-    switch (this) {
-      case PetStatus.happy:
-        return 'Happy';
-      case PetStatus.sad:
-        return 'Needs Love';
-      case PetStatus.sleeping:
-        return 'Sleeping';
-      case PetStatus.hungry:
-        return 'Hungry';
-    }
-  }
-}
 
 class HomeController extends GetxController {
   // === USER DATA ===
@@ -41,7 +12,7 @@ class HomeController extends GetxController {
   final partnerName = 'Gea'.obs;
 
   // === PARTNER DATA ===
-  final partnerAvatar = 'assets/images/avatar_partner.png'.obs;
+  final partnerAvatar = 'assets/images/avatar_me.png'.obs;
   final partnerStatusEmoji = '💤'.obs;
   final partnerStatusText = 'Sedang Tidur'.obs;
   final isPartnerOnline = false.obs;
@@ -57,8 +28,8 @@ class HomeController extends GetxController {
   }
 
   // === GAMIFICATION DATA ===
-  final streakCount = 12.obs;
-  final petStatus = PetStatus.hungry.obs;
+  final streakCount = 0.obs; // Start with 0 streak (inactive)
+  final petMood = PetMood.sad.obs; // Using PetMood from pet_avatar.dart
   final isDailyQuestCompleted = false.obs;
 
   // === DAILY QUESTS ===
@@ -203,24 +174,59 @@ class HomeController extends GetxController {
 
   // === PARTNER ACTIONS ===
 
+  /// Show interaction animation dialog (Lottie)
+  void _showInteractionDialog() {
+    Get.dialog(
+      Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: Center(
+          child: Lottie.asset(
+            'assets/lottie/interaction_kiss.json',
+            width: 200,
+            height: 200,
+            repeat: false,
+            errorBuilder: (context, error, stackTrace) {
+              return const Text('💋', style: TextStyle(fontSize: 100));
+            },
+          ),
+        ),
+      ),
+      barrierColor: Colors.black.withValues(alpha: 0.3),
+    );
+
+    // Auto close after 2 seconds
+    Future.delayed(const Duration(seconds: 2), () {
+      if (Get.isDialogOpen ?? false) {
+        Get.back();
+      }
+    });
+  }
+
   void pokePartner() {
     updateQuestProgress('interaction');
-    Get.snackbar(
-      '👋 Colek!',
-      'Kamu mencolek ${partnerName.value}!',
-      snackPosition: SnackPosition.TOP,
-      duration: const Duration(seconds: 2),
-    );
+    _showInteractionDialog();
+    Future.delayed(const Duration(seconds: 2), () {
+      Get.snackbar(
+        '👋 Colek!',
+        'Kamu mencolek ${partnerName.value}!',
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 2),
+      );
+    });
   }
 
   void sendLove() {
     updateQuestProgress('interaction');
-    Get.snackbar(
-      '❤️ Rindu Terkirim!',
-      '${partnerName.value} menerima cintamu 💕',
-      snackPosition: SnackPosition.TOP,
-      duration: const Duration(seconds: 2),
-    );
+    _showInteractionDialog();
+    Future.delayed(const Duration(seconds: 2), () {
+      Get.snackbar(
+        '❤️ Rindu Terkirim!',
+        '${partnerName.value} menerima cintamu 💕',
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 2),
+      );
+    });
   }
 
   void notifyPartner() {
@@ -238,7 +244,7 @@ class HomeController extends GetxController {
   void completeDailyQuest() {
     if (!isDailyQuestCompleted.value) {
       isDailyQuestCompleted.value = true;
-      petStatus.value = PetStatus.happy;
+      petMood.value = PetMood.idle; // Pet becomes idle (content) after check-in
       streakCount.value++;
       updateQuestProgress('interaction');
       Get.snackbar(
@@ -258,20 +264,26 @@ class HomeController extends GetxController {
   }
 
   void feedPet() {
-    if (petStatus.value == PetStatus.hungry) {
-      petStatus.value = PetStatus.happy;
+    if (petMood.value == PetMood.sad) {
+      petMood.value = PetMood.eating;
       Get.snackbar(
         '🍖 Yummy!',
-        '${petName.value} is now full and happy!',
+        '${petName.value} is eating!',
         snackPosition: SnackPosition.TOP,
         duration: const Duration(seconds: 2),
       );
+      // After eating, go back to idle
+      Future.delayed(const Duration(seconds: 3), () {
+        if (petMood.value == PetMood.eating) {
+          petMood.value = PetMood.idle;
+        }
+      });
     }
   }
 
   void resetDailyQuest() {
     isDailyQuestCompleted.value = false;
-    petStatus.value = PetStatus.hungry;
+    petMood.value = PetMood.sad; // Pet becomes sad when quest reset
   }
 
   @override

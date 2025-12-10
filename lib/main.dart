@@ -3,8 +3,8 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'core/theme/app_colors.dart';
+import 'modules/auth/splash_view.dart';
 import 'modules/dashboard/dashboard_binding.dart';
-import 'modules/dashboard/dashboard_view.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,8 +54,8 @@ class ChiraxApp extends StatelessWidget {
       // Initial binding untuk Dashboard
       initialBinding: DashboardBinding(),
 
-      // Home screen
-      home: const DashboardView(),
+      // Splash screen -> navigates to Dashboard
+      home: const SplashView(),
     );
   }
 }

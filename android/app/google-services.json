@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "465778343194",
+    "project_id": "chiraxel",
+    "storage_bucket": "chiraxel.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:465778343194:android:2a6bf7d93f9ac4a80380a3",
+        "android_client_info": {
+          "package_name": "com.example.chirax"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBc8hGW0qAQaMU7zpnI-Prx2Pgerzyg0zg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
