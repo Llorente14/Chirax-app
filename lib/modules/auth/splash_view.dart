@@ -3,9 +3,13 @@ import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../data/services/auth_service.dart';
 import '../dashboard/dashboard_view.dart';
+import 'login_view.dart';
+import 'pairing_view.dart';
+import 'setup_profile_view.dart';
 
-/// SplashView - Intro screen dengan Lottie animation
+/// SplashView - Intro screen dengan auth routing
 class SplashView extends StatefulWidget {
   const SplashView({super.key});
 
@@ -43,14 +47,50 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
 
     // Start animations
     Future.delayed(const Duration(milliseconds: 500), () {
-      _fadeController.forward();
-      _pulseController.repeat(reverse: true);
+      if (mounted) {
+        _fadeController.forward();
+        _pulseController.repeat(reverse: true);
+      }
     });
 
-    // Navigate to Dashboard after 3 seconds
-    Future.delayed(const Duration(seconds: 3), () {
-      Get.offAll(() => const DashboardView());
-    });
+    // Check auth and navigate
+    _checkAuthAndNavigate();
+  }
+
+  Future<void> _checkAuthAndNavigate() async {
+    // Wait for splash animation
+    await Future.delayed(const Duration(seconds: 3));
+
+    if (!mounted) return;
+
+    try {
+      final authService = Get.find<AuthService>();
+      final route = await authService.checkAuthStatus();
+
+      if (!mounted) return;
+
+      switch (route) {
+        case 'login':
+          Get.offAll(() => const LoginView());
+          break;
+        case 'setup':
+          Get.offAll(() => const SetupProfileView());
+          break;
+        case 'pairing':
+          Get.offAll(() => const PairingView());
+          break;
+        case 'dashboard':
+          Get.offAll(() => const DashboardView());
+          break;
+        default:
+          Get.offAll(() => const LoginView());
+      }
+    } catch (e) {
+      // If error, go to login
+      if (mounted) {
+        Get.offAll(() => const LoginView());
+      }
+    }
   }
 
   @override
