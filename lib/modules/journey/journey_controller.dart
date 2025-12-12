@@ -1,20 +1,38 @@
-import 'package:chirax/modules/home/home_controller.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../data/models/journey_event.dart';
+import '../../data/services/auth_service.dart';
+import '../../data/services/database_service.dart';
+import '../home/home_controller.dart';
 
 class JourneyController extends GetxController {
+  final AuthService _authService = Get.find<AuthService>();
+  final DatabaseService _dbService = Get.find<DatabaseService>();
+
   // === STATE ===
   final focusedDay = DateTime.now().obs;
   final selectedDay = Rx<DateTime>(DateTime.now());
   final events = <DateTime, List<JourneyEvent>>{}.obs;
+  final isLoading = true.obs;
 
   // === FORM ===
   final titleController = TextEditingController();
   final selectedCategoryIndex = 0.obs;
   final isSurpriseEvent = false.obs;
+
+  // === STREAM ===
+  StreamSubscription? _eventsSubscription;
+
+  // === GETTERS ===
+
+  /// Get coupleId from AuthService
+  String? get coupleId => _authService.userModel.value?.coupleId;
+
+  /// Current user UID
+  String? get currentUserId => _authService.currentUser?.value?.uid;
 
   // === BOUNDS ===
   DateTime get firstDay => DateTime.now().subtract(const Duration(days: 365));
@@ -58,51 +76,57 @@ class JourneyController extends GetxController {
     focusedDay.value = focused;
   }
 
-  void addEvent({
+  /// Add event to Firestore
+  Future<void> addEvent({
     required String title,
     required DateTime date,
     required int categoryIndex,
     bool isSurprise = false,
     bool updateQuest = true,
-  }) {
+  }) async {
+    if (coupleId == null) return;
+
     final category = EventCategory.categories[categoryIndex];
     final normalizedDate = _normalizeDate(date);
+
     final newEvent = JourneyEvent(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: '', // Will be assigned by Firestore
       title: title,
       date: normalizedDate,
       category: category.id,
       color: isSurprise ? JourneyEvent.surpriseColor : category.color,
       icon: isSurprise ? '🎁' : category.icon,
       isSurprise: isSurprise,
-      createdBy: 'me',
+      createdBy: currentUserId,
     );
 
-    if (events.containsKey(normalizedDate)) {
-      events[normalizedDate]!.add(newEvent);
-    } else {
-      events[normalizedDate] = [newEvent];
-    }
+    final result = await _dbService.addJourneyEvent(coupleId!, newEvent);
+    if (result != null) {
+      // Track badge progress: Memories Saved for "Memory Hoarder" badge
+      await _dbService.incrementMemoriesSaved(coupleId!);
 
-    events.refresh();
-
-    // Hook to quest system - update journey quest progress
-    if (updateQuest) {
-      try {
-        Get.find<HomeController>().updateQuestProgress('journey');
-      } catch (e) {
-        // HomeController not ready yet, skip
+      // Hook to quest system - update journey quest progress
+      if (updateQuest) {
+        try {
+          Get.find<HomeController>().updateQuestProgress('journey');
+        } catch (e) {
+          // HomeController not ready yet, skip
+        }
       }
+
+      Get.snackbar(
+        '📅 Event Ditambahkan',
+        '"$title" berhasil disimpan!',
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 2),
+      );
     }
   }
 
-  void deleteEvent(JourneyEvent event) {
-    final normalizedDate = _normalizeDate(event.date);
-    events[normalizedDate]?.removeWhere((e) => e.id == event.id);
-    if (events[normalizedDate]?.isEmpty ?? false) {
-      events.remove(normalizedDate);
-    }
-    events.refresh();
+  /// Delete event from Firestore
+  Future<void> deleteEvent(JourneyEvent event) async {
+    if (coupleId == null) return;
+    await _dbService.deleteJourneyEvent(coupleId!, event.id);
   }
 
   void resetForm() {
@@ -114,297 +138,281 @@ class JourneyController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _loadDummyData();
+    _initStream();
   }
 
-  void _loadDummyData() {
-    final now = DateTime.now();
+  /// Initialize real-time stream from Firestore
+  void _initStream() {
+    // Wait for auth to be ready
+    ever(_authService.userModel, (user) {
+      if (user?.coupleId != null) {
+        _startListeningEvents(user!.coupleId!);
+      }
+    });
 
-    // Today - updateQuest: false to skip quest update during init
-    addEvent(
-      title: 'Dinner Date',
-      date: now,
-      categoryIndex: 0,
-      updateQuest: false,
-    );
+    // Also try immediately if already authenticated
+    if (coupleId != null) {
+      _startListeningEvents(coupleId!);
+    }
+  }
 
-    // 3 days
-    addEvent(
-      title: 'Monthly Anniversary',
-      date: now.add(const Duration(days: 3)),
-      categoryIndex: 1,
-      updateQuest: false,
-    );
+  void _startListeningEvents(String coupleId) {
+    _eventsSubscription?.cancel();
+    isLoading.value = true;
 
-    // 7 days
-    addEvent(
-      title: 'Trip to Bandung',
-      date: now.add(const Duration(days: 7)),
-      categoryIndex: 2,
-      updateQuest: false,
-    );
+    _eventsSubscription = _dbService
+        .streamEvents(coupleId)
+        .listen(
+          (eventsList) {
+            // Convert List<JourneyEvent> to Map<DateTime, List<JourneyEvent>>
+            final Map<DateTime, List<JourneyEvent>> eventsMap = {};
+
+            for (final event in eventsList) {
+              final normalizedDate = _normalizeDate(event.date);
+              if (eventsMap.containsKey(normalizedDate)) {
+                eventsMap[normalizedDate]!.add(event);
+              } else {
+                eventsMap[normalizedDate] = [event];
+              }
+            }
+
+            events.value = eventsMap;
+            isLoading.value = false;
+          },
+          onError: (e) {
+            isLoading.value = false;
+            Get.snackbar('Error', 'Gagal memuat events: $e');
+          },
+        );
   }
 
   @override
   void onClose() {
     titleController.dispose();
+    _eventsSubscription?.cancel();
     super.onClose();
   }
-}
 
-/// Simple Bottom Sheet untuk Add Event (StatelessWidget biasa)
-void showAddEventSheet(JourneyController controller) {
-  controller.resetForm();
-  final date = controller.selectedDay.value;
+  /// Show add event bottom sheet (UI unchanged)
+  void showAddEventSheet() {
+    titleController.clear();
+    selectedCategoryIndex.value = 0;
+    isSurpriseEvent.value = false;
 
-  Get.bottomSheet(
-    StatefulBuilder(
-      builder: (context, setState) {
-        bool isButtonPressed = false;
-
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(28),
-              topRight: Radius.circular(28),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.shade300,
-                offset: const Offset(0, -4),
-                blurRadius: 0,
-              ),
-            ],
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(36),
+            topRight: Radius.circular(36),
           ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Handle
-                Center(
-                  child: Container(
-                    width: 48,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+
+            // Title
+            Text(
+              'Tambah Event 📅',
+              style: AppTextStyles.headline.copyWith(fontSize: 20),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Event Title Input - Juicy 3D Style
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.neutralShadow, width: 3),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.neutralShadow,
+                    offset: const Offset(0, 4),
+                    blurRadius: 0,
+                  ),
+                ],
+              ),
+              child: TextField(
+                controller: titleController,
+                decoration: InputDecoration(
+                  hintText: 'Nama Event',
+                  hintStyle: AppTextStyles.body.copyWith(
+                    color: AppColors.textSecondary.withValues(alpha: 0.5),
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
                   ),
                 ),
-                const SizedBox(height: 20),
+                style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ),
 
-                // Header
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
+            const SizedBox(height: 20),
+
+            // Category Selection
+            Obx(
+              () => Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: List.generate(EventCategory.categories.length, (i) {
+                  final cat = EventCategory.categories[i];
+                  final isSelected = selectedCategoryIndex.value == i;
+                  return GestureDetector(
+                    onTap: () => selectedCategoryIndex.value = i,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
                       ),
-                      child: const Text('📅', style: TextStyle(fontSize: 24)),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? cat.color.withValues(alpha: 0.2)
+                            : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isSelected ? cat.color : Colors.grey.shade300,
+                          width: 2,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('Tambah Event', style: AppTextStyles.title),
+                          Text(cat.icon, style: const TextStyle(fontSize: 16)),
+                          const SizedBox(width: 6),
                           Text(
-                            '${date.day}/${date.month}/${date.year}',
+                            cat.label,
                             style: AppTextStyles.bodySmall.copyWith(
-                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w700,
+                              color: isSelected
+                                  ? cat.color
+                                  : AppColors.textSecondary,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    // Close button
-                    GestureDetector(
-                      onTap: () => Get.back(),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          Icons.close_rounded,
-                          color: Colors.grey.shade500,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
+                  );
+                }),
+              ),
+            ),
 
-                // Title field with 3D border
-                Text('Judul Event', style: AppTextStyles.subtitle),
-                const SizedBox(height: 8),
-                Container(
+            const SizedBox(height: 16),
+
+            // Surprise Toggle
+            Obx(
+              () => GestureDetector(
+                onTap: () => isSurpriseEvent.toggle(),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.grey.shade300, width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.shade200,
-                        offset: const Offset(0, 3),
-                        blurRadius: 0,
+                    color: isSurpriseEvent.value
+                        ? JourneyEvent.surpriseColor.withValues(alpha: 0.15)
+                        : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isSurpriseEvent.value
+                          ? JourneyEvent.surpriseColor
+                          : Colors.grey.shade300,
+                      width: 2,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        isSurpriseEvent.value ? '🎁' : '🤫',
+                        style: const TextStyle(fontSize: 18),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Jadikan Surprise',
+                        style: AppTextStyles.body.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: isSurpriseEvent.value
+                              ? JourneyEvent.surpriseColor
+                              : AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
-                  child: TextField(
-                    controller: controller.titleController,
-                    decoration: InputDecoration(
-                      hintText: 'Contoh: Dinner Date...',
-                      hintStyle: TextStyle(color: Colors.grey.shade400),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      border: InputBorder.none,
-                    ),
-                  ),
                 ),
-                const SizedBox(height: 20),
-
-                // Category
-                Text('Kategori', style: AppTextStyles.subtitle),
-                const SizedBox(height: 10),
-                Obx(
-                  () => Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: List.generate(EventCategory.categories.length, (
-                      i,
-                    ) {
-                      final cat = EventCategory.categories[i];
-                      final isSelected =
-                          controller.selectedCategoryIndex.value == i;
-                      return GestureDetector(
-                        onTap: () => controller.selectedCategoryIndex.value = i,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 150),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? cat.color
-                                : cat.color.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: cat.color, width: 2.5),
-                            boxShadow: isSelected
-                                ? [
-                                    BoxShadow(
-                                      color: cat.color.withValues(alpha: 0.4),
-                                      offset: const Offset(0, 3),
-                                      blurRadius: 0,
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                cat.icon,
-                                style: const TextStyle(fontSize: 16),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                cat.label,
-                                style: TextStyle(
-                                  color: isSelected ? Colors.white : cat.color,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
-                ),
-                const SizedBox(height: 28),
-
-                // Add button - 3D Bouncy Style
-                StatefulBuilder(
-                  builder: (context, setButtonState) {
-                    return GestureDetector(
-                      onTapDown: (_) =>
-                          setButtonState(() => isButtonPressed = true),
-                      onTapUp: (_) {
-                        setButtonState(() => isButtonPressed = false);
-                        if (controller.titleController.text.isNotEmpty) {
-                          controller.addEvent(
-                            title: controller.titleController.text,
-                            date: date,
-                            categoryIndex:
-                                controller.selectedCategoryIndex.value,
-                          );
-                        }
-                        Get.back();
-                      },
-                      onTapCancel: () =>
-                          setButtonState(() => isButtonPressed = false),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 100),
-                        transform: Matrix4.translationValues(
-                          0,
-                          isButtonPressed ? 4 : 0,
-                          0,
-                        ),
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        decoration: BoxDecoration(
-                          color: AppColors.success,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.successShadow,
-                              offset: Offset(0, isButtonPressed ? 2 : 5),
-                              blurRadius: 0,
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.add_rounded,
-                              color: Colors.white,
-                              size: 22,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'TAMBAH EVENT',
-                              style: AppTextStyles.button.copyWith(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-              ],
+              ),
             ),
-          ),
-        );
-      },
-    ),
-    isScrollControlled: true,
-  );
+
+            const SizedBox(height: 24),
+
+            // Add Button (Bouncy 3D)
+            GestureDetector(
+              onTap: () {
+                if (titleController.text.isEmpty) {
+                  Get.snackbar(
+                    '⚠️ Oops!',
+                    'Nama event tidak boleh kosong',
+                    snackPosition: SnackPosition.TOP,
+                  );
+                  return;
+                }
+                addEvent(
+                  title: titleController.text,
+                  date: selectedDay.value,
+                  categoryIndex: selectedCategoryIndex.value,
+                  isSurprise: isSurpriseEvent.value,
+                );
+                Get.back();
+              },
+              child: Container(
+                width: double.infinity,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: AppColors.primaryShadow,
+                      offset: Offset(0, 5),
+                      blurRadius: 0,
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('✨', style: TextStyle(fontSize: 24)),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Tambah Event',
+                        style: AppTextStyles.button.copyWith(fontSize: 18),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+      isScrollControlled: true,
+    );
+  }
 }

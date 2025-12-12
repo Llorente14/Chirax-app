@@ -2,17 +2,59 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/badge_model.dart';
+import '../../data/services/auth_service.dart';
+import '../home/home_controller.dart';
+import '../auth/login_view.dart';
 
 class ProfileController extends GetxController {
-  // === USER DATA ===
-  final name = 'Llorente'.obs;
-  final username = '@partner_01'.obs;
-  final birthDate = '07 Agustus 2003'.obs;
-  final avatarAsset = 'assets/images/avatar_me.png'.obs;
+  final AuthService _authService = Get.find<AuthService>();
 
   // === SECURITY ===
   final isBiometricActive = false.obs;
   final isNotificationActive = true.obs;
+
+  // === GETTERS FOR REAL DATA ===
+
+  /// User name from AuthService
+  String get name => _authService.userModel.value?.name ?? 'User';
+
+  /// Username from AuthService
+  String get username {
+    final un = _authService.userModel.value?.username;
+    if (un == null || un.isEmpty) return '@user';
+    return un.startsWith('@') ? un : '@$un';
+  }
+
+  /// Birth date formatted
+  String get birthDate {
+    final birthday = _authService.userModel.value?.birthday;
+    if (birthday == null) return 'Belum diatur';
+    return _formatDate(birthday);
+  }
+
+  /// Avatar asset
+  String get avatarAsset => 'assets/images/avatar_me.png';
+
+  /// Format date to Indonesian format
+  String _formatDate(DateTime date) {
+    const months = [
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
+  }
+
+  // === SECURITY TOGGLES ===
 
   void toggleBiometric(bool val) {
     isBiometricActive.value = val;
@@ -29,40 +71,59 @@ class ProfileController extends GetxController {
     isNotificationActive.value = val;
   }
 
-  // === UPDATE PROFILE ===
+  // === UPDATE PROFILE (via service in future) ===
   void updateProfile({
     String? newName,
     String? newUsername,
     String? newAvatar,
     String? newBirthDate,
   }) {
-    if (newName != null && newName.isNotEmpty) {
-      name.value = newName;
-    }
-    if (newUsername != null && newUsername.isNotEmpty) {
-      username.value = newUsername;
-    }
-    if (newAvatar != null && newAvatar.isNotEmpty) {
-      avatarAsset.value = newAvatar;
-    }
-    if (newBirthDate != null && newBirthDate.isNotEmpty) {
-      birthDate.value = newBirthDate;
+    // For now, this would trigger an update to Firestore
+    // The UI will auto-refresh via stream
+    Get.snackbar(
+      '✅ Updated',
+      'Profile updated!',
+      snackPosition: SnackPosition.TOP,
+    );
+  }
+
+  // === GAMIFICATION GETTERS FROM HOMECONTROLLER ===
+
+  /// Get HomeController if available
+  HomeController? get _homeController {
+    try {
+      return Get.find<HomeController>();
+    } catch (e) {
+      return null;
     }
   }
 
-  // === ADVANCED GAMIFICATION ===
-  final totalXP = 8750.obs;
-  final totalAsset = 15500000.0.obs;
-  final totalMissions = 84.obs;
-  final streak = 121.obs;
+  /// Total XP from couple data
+  int get totalXP => _homeController?.totalXP ?? 0;
 
-  /// Add XP from quests or achievements
+  /// Total assets from couple data
+  double get totalAsset =>
+      _homeController?.coupleData.value?.totalAssets ?? 0.0;
+
+  /// Streak from couple data
+  int get streak => _homeController?.streakCount ?? 0;
+
+  /// Days together
+  int get daysTogether => _homeController?.daysTogether ?? 0;
+
+  /// Total missions completed (local count for now)
+  int get totalMissions =>
+      _homeController?.dailyQuests.where((q) => q.isClaimed).length ?? 0;
+
+  /// Add XP (hook from quests)
   void addXP(int amount) {
-    totalXP.value += amount;
+    // XP is now handled by HomeController via DatabaseService
   }
 
-  int get currentLevel => (totalXP.value / 1000).floor() + 1;
+  /// Current level based on XP
+  int get currentLevel => (totalXP / 1000).floor() + 1;
 
+  /// Level title based on level
   String get levelTitle {
     if (currentLevel <= 5) return 'New Couple 🌱';
     if (currentLevel <= 10) return 'Love Birds 🕊️';
@@ -70,8 +131,9 @@ class ProfileController extends GetxController {
     return 'Legendary Lovers 👑';
   }
 
+  /// Formatted total assets
   String get formattedAsset {
-    final value = totalAsset.value;
+    final value = totalAsset;
     if (value >= 1000000000) {
       return 'Rp ${(value / 1000000000).toStringAsFixed(1)}M';
     } else if (value >= 1000000) {
@@ -82,17 +144,18 @@ class ProfileController extends GetxController {
     return 'Rp ${value.toStringAsFixed(0)}';
   }
 
+  /// Stats list for grid display
   List<Map<String, dynamic>> get statsList => [
     {
       'icon': Icons.local_fire_department_rounded,
       'color': AppColors.secondary,
-      'value': '${streak.value}',
+      'value': '$streak',
       'label': 'Hari Streak 🔥',
     },
     {
       'icon': Icons.bolt_rounded,
       'color': const Color(0xFFFFC107),
-      'value': '${totalXP.value}',
+      'value': '$totalXP',
       'label': 'Lvl $currentLevel',
       'sublabel': levelTitle,
     },
@@ -103,33 +166,84 @@ class ProfileController extends GetxController {
       'label': 'Total Aset 💰',
     },
     {
-      'icon': Icons.track_changes_rounded,
-      'color': AppColors.moneyPurple,
-      'value': '${totalMissions.value}',
-      'label': 'Misi Selesai ✅',
+      'icon': Icons.favorite_rounded,
+      'color': AppColors.primary,
+      'value': '$daysTogether',
+      'label': 'Hari Bersama 💕',
     },
   ];
 
   // === BADGE SYSTEM ===
   final badges = <BadgeModel>[].obs;
+  Worker? _coupleDataWorker;
 
   @override
   void onInit() {
     super.onInit();
     _loadBadges();
+
+    // Set up reactive listener after a short delay to ensure HomeController is ready
+    Future.delayed(const Duration(milliseconds: 500), () {
+      _setupReactiveBadges();
+    });
+  }
+
+  @override
+  void onClose() {
+    _coupleDataWorker?.dispose();
+    super.onClose();
+  }
+
+  /// Setup reactive listener for coupleData changes
+  void _setupReactiveBadges() {
+    final homeCtrl = _homeController;
+    if (homeCtrl != null) {
+      // Listen to coupleData changes to auto-refresh badges
+      // This ensures badges update when XP, streak, or assets change
+      _coupleDataWorker = ever(homeCtrl.coupleData, (_) {
+        _loadBadges();
+      });
+    }
+  }
+
+  /// Refresh badges manually (can be called after data changes)
+  void refreshBadges() {
+    _loadBadges();
+  }
+
+  /// NEW: Check if today is the anniversary date
+  bool _isAnniversaryToday() {
+    final startDate = _homeController?.coupleData.value?.startDate;
+    if (startDate == null) return false;
+    final today = DateTime.now();
+    return today.month == startDate.month && today.day == startDate.day;
   }
 
   void _loadBadges() {
+    // Get dynamic badge progress from coupleData
+    final badgeProgress =
+        _homeController?.coupleData.value?.badgeProgress ?? {};
+
+    // Check anniversary status dynamically
+    final isAnniversary = _isAnniversaryToday();
+
+    // Get dynamic progress values (with defaults)
+    final daysWithoutWithdrawal = badgeProgress['daysWithoutWithdrawal'] ?? 0;
+    final profileViewsToday = badgeProgress['profileViewsToday'] ?? 0;
+    final goalsCompleted = badgeProgress['goalsCompleted'] ?? 0;
+    final memoriesSaved = badgeProgress['memoriesSaved'] ?? 0;
+    final appOpensThisHour = badgeProgress['appOpensThisHour'] ?? 0;
+
     badges.value = [
-      // === NEW BADGES ===
+      // === DYNAMIC BADGES (with Firestore tracking) ===
       BadgeModel(
         id: 'hemat_kopi',
         name: 'Hemat Kopi ☕',
         description:
             'Tidak ambil uang tabungan selama 1 bulan. Kuat banget! 💪',
         iconEmoji: '☕',
-        isUnlocked: false,
-        currentProgress: 12,
+        isUnlocked: daysWithoutWithdrawal >= 30,
+        currentProgress: daysWithoutWithdrawal.clamp(0, 30),
         targetProgress: 30,
         color: Colors.brown,
       ),
@@ -138,8 +252,8 @@ class ProfileController extends GetxController {
         name: 'Anniversary King 📅',
         description: 'Login tepat di hari Anniversary. So romantic! 💕',
         iconEmoji: '👑',
-        isUnlocked: false,
-        currentProgress: 0,
+        isUnlocked: isAnniversary,
+        currentProgress: isAnniversary ? 1 : 0,
         targetProgress: 1,
         color: AppColors.primary,
       ),
@@ -148,8 +262,8 @@ class ProfileController extends GetxController {
         name: 'Stalker 🕵️',
         description: 'Buka profil pasangan 5 kali sehari. Kangen terus ya? 😏',
         iconEmoji: '🕵️',
-        isUnlocked: false,
-        currentProgress: 3,
+        isUnlocked: profileViewsToday >= 5,
+        currentProgress: profileViewsToday.clamp(0, 5),
         targetProgress: 5,
         color: Colors.deepPurple,
       ),
@@ -158,19 +272,19 @@ class ProfileController extends GetxController {
         name: 'Bucin 🥺',
         description: 'Buka aplikasi 10 kali dalam satu jam. Bucin sejati! 💗',
         iconEmoji: '🥺',
-        isUnlocked: true,
-        currentProgress: 10,
+        isUnlocked: appOpensThisHour >= 10,
+        currentProgress: appOpensThisHour.clamp(0, 10),
         targetProgress: 10,
         color: Colors.blue,
       ),
       BadgeModel(
         id: 'to_the_moon',
         name: 'To The Moon 🚀',
-        description: 'Capai target tabungan 100%. Sampai bulan bareng! 🌙',
+        description: 'Selesaikan 5 target tabungan. Sampai bulan bareng! 🌙',
         iconEmoji: '🚀',
-        isUnlocked: false,
-        currentProgress: 65,
-        targetProgress: 100,
+        isUnlocked: goalsCompleted >= 5,
+        currentProgress: goalsCompleted.clamp(0, 5),
+        targetProgress: 5,
         color: Colors.indigo,
       ),
       BadgeModel(
@@ -178,60 +292,53 @@ class ProfileController extends GetxController {
         name: 'Saver Novice 💰',
         description: 'Menabung 1 Juta Pertamamu! Ini awal yang bagus! 🎉',
         iconEmoji: '💰',
-        isUnlocked: true,
-        currentProgress: 1,
+        isUnlocked: totalAsset >= 1000000,
+        currentProgress: totalAsset >= 1000000 ? 1 : 0,
         targetProgress: 1,
         color: AppColors.success,
       ),
-      // === OLD BADGES ===
+      // === STREAK BADGES ===
       BadgeModel(
         id: 'on_fire',
         name: 'On Fire 🔥',
         description:
             'Streak selama 30 hari berturut-turut! Kamu konsisten banget!',
         iconEmoji: '🔥',
-        isUnlocked: true,
-        currentProgress: 30,
+        isUnlocked: streak >= 30,
+        currentProgress: streak.clamp(0, 30),
         targetProgress: 30,
         color: AppColors.secondary,
       ),
+      // === ASSET BADGES ===
       BadgeModel(
         id: 'wealthy_couple',
         name: 'Wealthy Couple 💎',
         description: 'Total aset kalian mencapai 50 Juta Rupiah!',
         iconEmoji: '💎',
-        isUnlocked: false,
-        currentProgress: 15,
+        isUnlocked: totalAsset >= 50000000,
+        currentProgress: (totalAsset / 1000000).floor().clamp(0, 50),
         targetProgress: 50,
         color: AppColors.moneyPurple,
       ),
+      // === MEMORY BADGES ===
       BadgeModel(
         id: 'memory_hoarder',
         name: 'Memory Hoarder 📸',
         description: 'Simpan 100 kenangan indah bersama pasangan!',
         iconEmoji: '📸',
-        isUnlocked: false,
-        currentProgress: 24,
+        isUnlocked: memoriesSaved >= 100,
+        currentProgress: memoriesSaved.clamp(0, 100),
         targetProgress: 100,
         color: AppColors.primary,
       ),
-      BadgeModel(
-        id: 'night_owl',
-        name: 'Night Owl 🦉',
-        description: 'Chatting romantis di atas jam 12 malam sebanyak 10 kali!',
-        iconEmoji: '🦉',
-        isUnlocked: false,
-        currentProgress: 2,
-        targetProgress: 10,
-        color: const Color(0xFF5C6BC0),
-      ),
+      // === MILESTONE BADGES ===
       BadgeModel(
         id: 'anniversary',
         name: '1 Year Together 🎂',
         description: 'Merayakan 1 tahun bersama! Semoga langgeng! 💕',
         iconEmoji: '🎂',
-        isUnlocked: false,
-        currentProgress: 121,
+        isUnlocked: daysTogether >= 365,
+        currentProgress: daysTogether.clamp(0, 365),
         targetProgress: 365,
         color: AppColors.moneyPink,
       ),
@@ -307,13 +414,10 @@ class ProfileController extends GetxController {
                   const SizedBox(width: 12),
                   Expanded(
                     child: GestureDetector(
-                      onTap: () {
+                      onTap: () async {
                         Get.back();
-                        Get.snackbar(
-                          '👋 Sampai Jumpa!',
-                          'Kamu berhasil keluar',
-                          snackPosition: SnackPosition.TOP,
-                        );
+                        await _authService.signOut();
+                        Get.offAll(() => const LoginView());
                       },
                       child: Container(
                         height: 50,

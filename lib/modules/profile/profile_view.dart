@@ -109,14 +109,14 @@ class ProfileView extends GetView<ProfileController> {
           // User Info
           Obx(
             () => Text(
-              controller.name.value,
+              controller.name,
               style: AppTextStyles.headline.copyWith(fontSize: 26),
             ),
           ),
           const SizedBox(height: 4),
           Obx(
             () => Text(
-              controller.username.value,
+              controller.username,
               style: AppTextStyles.body.copyWith(
                 color: AppColors.textSecondary,
               ),
@@ -143,7 +143,7 @@ class ProfileView extends GetView<ProfileController> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    controller.birthDate.value,
+                    controller.birthDate,
                     style: AppTextStyles.bodySmall.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -188,7 +188,7 @@ class ProfileView extends GetView<ProfileController> {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(30),
               child: Obx(() {
-                final avatar = controller.avatarAsset.value;
+                final avatar = controller.avatarAsset;
                 if (avatar == 'default') {
                   return Container(
                     color: AppColors.primary.withValues(alpha: 0.2),

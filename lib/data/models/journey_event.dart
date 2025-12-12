@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// JourneyEvent - Model untuk event di kalender
 class JourneyEvent {
@@ -9,7 +10,7 @@ class JourneyEvent {
   final Color color;
   final String icon; // Emoji string
   final bool isSurprise; // Apakah ini event kejutan
-  final String? createdBy; // 'me' atau 'partner'
+  final String? createdBy; // 'me' atau 'partner' atau UID
 
   JourneyEvent({
     required this.id,
@@ -21,6 +22,77 @@ class JourneyEvent {
     this.isSurprise = false,
     this.createdBy,
   });
+
+  /// Convert to Firestore map
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      'date': Timestamp.fromDate(date),
+      'category': category,
+      'color': color.value, // Store as int
+      'icon': icon,
+      'isSurprise': isSurprise,
+      'createdBy': createdBy,
+    };
+  }
+
+  /// Create from Firestore document
+  factory JourneyEvent.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+
+    // Parse date from Timestamp or String
+    DateTime parsedDate;
+    if (data['date'] is Timestamp) {
+      parsedDate = (data['date'] as Timestamp).toDate();
+    } else if (data['date'] is String) {
+      parsedDate = DateTime.tryParse(data['date']) ?? DateTime.now();
+    } else {
+      parsedDate = DateTime.now();
+    }
+
+    // Get color from category if not stored
+    final category = data['category'] ?? 'other';
+    final defaultColor = _getCategoryColor(category);
+
+    return JourneyEvent(
+      id: doc.id,
+      title: data['title'] ?? 'Untitled',
+      date: parsedDate,
+      category: category,
+      color: data['color'] != null ? Color(data['color']) : defaultColor,
+      icon: data['icon'] ?? _getCategoryIcon(category),
+      isSurprise: data['isSurprise'] ?? false,
+      createdBy: data['createdBy'],
+    );
+  }
+
+  /// Get default color for category
+  static Color _getCategoryColor(String category) {
+    switch (category) {
+      case 'date':
+        return const Color(0xFFF399D1);
+      case 'anniversary':
+        return const Color(0xFFFF6B6B);
+      case 'trip':
+        return const Color(0xFF1899D6);
+      default:
+        return const Color(0xFF58CC02);
+    }
+  }
+
+  /// Get default icon for category
+  static String _getCategoryIcon(String category) {
+    switch (category) {
+      case 'date':
+        return '❤️';
+      case 'anniversary':
+        return '🎂';
+      case 'trip':
+        return '✈️';
+      default:
+        return '📌';
+    }
+  }
 
   /// Factory untuk membuat event dengan kategori preset
   factory JourneyEvent.date({

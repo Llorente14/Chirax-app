@@ -1,18 +1,31 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/savings_goal.dart';
+import '../../data/services/auth_service.dart';
+import '../../data/services/database_service.dart';
 import '../home/home_controller.dart';
 
 class FinanceController extends GetxController {
-  // === GOALS LIST ===
+  final AuthService _authService = Get.find<AuthService>();
+  final DatabaseService _dbService = Get.find<DatabaseService>();
+
+  // === GOALS LIST (Real-time from Firestore) ===
   final goals = <SavingsGoal>[].obs;
   final selectedIndex = 0.obs;
+  final isLoading = true.obs;
 
   // === FORM STATE ===
   final amountController = TextEditingController();
 
+  // === STREAM SUBSCRIPTION ===
+  StreamSubscription? _goalsSubscription;
+
   // === GETTERS ===
+
+  /// Get coupleId from AuthService
+  String? get coupleId => _authService.userModel.value?.coupleId;
 
   /// Active goals (not completed)
   List<SavingsGoal> get activeGoals =>
@@ -46,19 +59,21 @@ class FinanceController extends GetxController {
 
   // === GOAL MANAGEMENT ===
 
-  /// Add new goal
-  void addNewGoal({
+  /// Add new goal to Firestore
+  Future<void> addNewGoal({
     required String title,
     required double target,
     double initialBalance = 0,
     required String icon,
     required Color color,
-  }) {
+  }) async {
+    if (coupleId == null) return;
+
     // Count current highlighted
     final highlightedCount = highlightedGoals.length;
 
     final newGoal = SavingsGoal(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: '', // Will be assigned by Firestore
       title: title,
       targetAmount: target,
       currentAmount: initialBalance,
@@ -67,23 +82,23 @@ class FinanceController extends GetxController {
       isHighlighted: highlightedCount < 3, // Auto highlight if slot available
     );
 
-    goals.add(newGoal);
-    goals.refresh();
-
-    Get.snackbar(
-      '✅ Target Dibuat',
-      '"$title" berhasil ditambahkan!',
-      snackPosition: SnackPosition.TOP,
-      duration: const Duration(seconds: 2),
-    );
+    final result = await _dbService.addGoal(coupleId!, newGoal);
+    if (result != null) {
+      Get.snackbar(
+        '✅ Target Dibuat',
+        '"$title" berhasil ditambahkan!',
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 2),
+      );
+    }
   }
 
   /// Toggle highlight status
-  bool toggleHighlight(String id) {
-    final index = goals.indexWhere((g) => g.id == id);
-    if (index == -1) return false;
+  Future<bool> toggleHighlight(String id) async {
+    if (coupleId == null) return false;
 
-    final goal = goals[index];
+    final goal = goals.firstWhereOrNull((g) => g.id == id);
+    if (goal == null) return false;
 
     // If trying to highlight
     if (!goal.isHighlighted) {
@@ -99,23 +114,21 @@ class FinanceController extends GetxController {
       }
     }
 
-    goals[index] = goal.copyWith(isHighlighted: !goal.isHighlighted);
-    goals.refresh();
+    await _dbService.toggleGoalHighlight(coupleId!, id, !goal.isHighlighted);
     return true;
   }
 
   /// Mark goal as completed
-  void markAsCompleted(String id) {
-    final index = goals.indexWhere((g) => g.id == id);
-    if (index == -1) return;
+  Future<void> markAsCompleted(String id) async {
+    if (coupleId == null) return;
 
-    final goal = goals[index];
-    goals[index] = goal.copyWith(
-      isCompleted: true,
-      isHighlighted: false,
-      completedDate: DateTime.now(),
-    );
-    goals.refresh();
+    final goal = goals.firstWhereOrNull((g) => g.id == id);
+    if (goal == null) return;
+
+    await _dbService.completeGoal(coupleId!, id);
+
+    // Track badge progress: Goals Completed for "To The Moon" badge
+    await _dbService.incrementGoalsCompleted(coupleId!);
 
     // Reset selected index
     if (highlightedGoals.isNotEmpty) {
@@ -131,12 +144,13 @@ class FinanceController extends GetxController {
   }
 
   /// Delete goal permanently
-  void deleteGoal(String id) {
+  Future<void> deleteGoal(String id) async {
+    if (coupleId == null) return;
+
     final goal = goals.firstWhereOrNull((g) => g.id == id);
     if (goal == null) return;
 
-    goals.removeWhere((g) => g.id == id);
-    goals.refresh();
+    await _dbService.deleteGoal(coupleId!, id);
 
     // Reset selected index
     if (highlightedGoals.isNotEmpty &&
@@ -154,21 +168,22 @@ class FinanceController extends GetxController {
 
   // === SAVINGS ACTIONS ===
 
-  /// Add savings to current goal
-  void addSavings(double amount) {
-    if (amount <= 0 || currentGoal == null) return;
+  /// Add savings to current goal via Firestore
+  Future<void> addSavings(double amount) async {
+    if (amount <= 0 || currentGoal == null || coupleId == null) return;
 
-    final goalId = currentGoal!.id;
-    final index = goals.indexWhere((g) => g.id == goalId);
-    if (index == -1) return;
-
-    final goal = goals[index];
-    final newAmount = goal.currentAmount + amount;
-
-    goals[index] = goal.copyWith(
-      currentAmount: newAmount.clamp(0, goal.targetAmount * 2),
+    final goal = currentGoal!;
+    final newAmount = (goal.currentAmount + amount).clamp(
+      0.0,
+      goal.targetAmount * 2,
     );
-    goals.refresh();
+
+    await _dbService.updateGoalAmount(
+      coupleId!,
+      goal.id,
+      newAmount,
+      addedAmount: amount, // Hook to update totalAssets
+    );
 
     // Hook to quest system - update savings quest progress
     if (Get.isRegistered<HomeController>()) {
@@ -176,7 +191,7 @@ class FinanceController extends GetxController {
     }
 
     // Celebration if target reached
-    if (goals[index].isTargetReached && !goal.isTargetReached) {
+    if (newAmount >= goal.targetAmount && !goal.isTargetReached) {
       Get.snackbar(
         '🎉 Target Tercapai!',
         '"${goal.title}" sudah mencapai target!',
@@ -232,53 +247,46 @@ class FinanceController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _loadDummyData();
+    _initStream();
   }
 
-  void _loadDummyData() {
-    goals.addAll([
-      SavingsGoal(
-        id: '1',
-        title: 'Trip Bali',
-        targetAmount: 10000000,
-        currentAmount: 6500000,
-        iconEmoji: '🏖️',
-        color: AppColors.secondary,
-        isHighlighted: true,
-      ),
-      SavingsGoal(
-        id: '2',
-        title: 'Beli iPhone',
-        targetAmount: 15000000,
-        currentAmount: 3200000,
-        iconEmoji: '📱',
-        color: AppColors.moneyPurple,
-        isHighlighted: true,
-      ),
-      SavingsGoal(
-        id: '3',
-        title: 'Dana Darurat',
-        targetAmount: 20000000,
-        currentAmount: 12000000,
-        iconEmoji: '🛡️',
-        color: AppColors.success,
-        isHighlighted: true,
-      ),
-      SavingsGoal(
-        id: '4',
-        title: 'Beli Motor',
-        targetAmount: 25000000,
-        currentAmount: 5000000,
-        iconEmoji: '🏍️',
-        color: AppColors.moneyOrange,
-        isHighlighted: false, // Not highlighted
-      ),
-    ]);
+  /// Initialize real-time stream from Firestore
+  void _initStream() {
+    // Wait for auth to be ready
+    ever(_authService.userModel, (user) {
+      if (user?.coupleId != null) {
+        _startListeningGoals(user!.coupleId!);
+      }
+    });
+
+    // Also try immediately if already authenticated
+    if (coupleId != null) {
+      _startListeningGoals(coupleId!);
+    }
+  }
+
+  void _startListeningGoals(String coupleId) {
+    _goalsSubscription?.cancel();
+    isLoading.value = true;
+
+    _goalsSubscription = _dbService
+        .streamGoals(coupleId)
+        .listen(
+          (goalsList) {
+            goals.value = goalsList;
+            isLoading.value = false;
+          },
+          onError: (e) {
+            isLoading.value = false;
+            Get.snackbar('Error', 'Gagal memuat goals: $e');
+          },
+        );
   }
 
   @override
   void onClose() {
     amountController.dispose();
+    _goalsSubscription?.cancel();
     super.onClose();
   }
 }

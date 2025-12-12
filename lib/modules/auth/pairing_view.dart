@@ -73,7 +73,8 @@ class _PairingViewState extends State<PairingView>
     }
   }
 
-  /// Connect with partner using code
+  /// Connect with partner using code (RACE CONDITION FIX)
+  /// Now uses transaction-based connection to prevent simultaneous pairing
   Future<void> _connectWithCode() async {
     final code = _codeController.text.toUpperCase();
     if (code.length != 6) {
@@ -90,28 +91,14 @@ class _PairingViewState extends State<PairingView>
 
       if (myUid == null) return;
 
-      // Find creator of the code
-      final creatorUid = await dbService.findPairingCode(code);
-
-      if (creatorUid == null) {
-        Get.snackbar('Error', 'Kode tidak ditemukan');
-        return;
-      }
-
-      if (creatorUid == myUid) {
-        Get.snackbar('Error', 'Tidak bisa pairing dengan diri sendiri');
-        return;
-      }
-
-      // Connect partners
-      final success = await dbService.connectPartners(myUid, creatorUid);
+      // Use new transactional method that handles everything atomically
+      final success = await dbService.connectPartnersWithCode(myUid, code);
 
       if (success) {
-        // Delete used code
-        await dbService.deletePairingCode(code);
         // Navigate to dashboard
         Get.offAll(() => const DashboardView());
       }
+      // Error messages are handled inside connectPartnersWithCode
     } finally {
       setState(() => _isConnecting = false);
     }

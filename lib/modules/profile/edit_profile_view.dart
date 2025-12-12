@@ -10,14 +10,12 @@ class EditProfileView extends GetView<ProfileController> {
   @override
   Widget build(BuildContext context) {
     // Controllers
-    final nameController = TextEditingController(text: controller.name.value);
-    final usernameController = TextEditingController(
-      text: controller.username.value,
-    );
+    final nameController = TextEditingController(text: controller.name);
+    final usernameController = TextEditingController(text: controller.username);
     final birthDateController = TextEditingController(
-      text: controller.birthDate.value,
+      text: controller.birthDate,
     );
-    final selectedAvatar = controller.avatarAsset.value.obs;
+    final selectedAvatar = controller.avatarAsset.obs;
 
     // Avatar options
     final avatarOptions = [

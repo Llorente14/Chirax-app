@@ -10,6 +10,7 @@ import '../../core/widgets/shimmer_badge.dart';
 import '../../core/widgets/streak_fire.dart';
 import '../../data/models/journey_event.dart';
 import '../../data/models/quest_model.dart';
+import '../../data/services/database_service.dart';
 import '../journey/journey_controller.dart';
 import 'home_controller.dart';
 
@@ -49,6 +50,11 @@ class HomeView extends GetView<HomeController> {
 
                   // === STREAK HERO SECTION ===
                   _buildStreakHero(),
+
+                  const SizedBox(height: 24),
+
+                  // === WEEKLY CHALLENGE (NEW) ===
+                  _buildWeeklyChallengeCard(),
 
                   const SizedBox(height: 24),
 
@@ -127,32 +133,28 @@ class HomeView extends GetView<HomeController> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: Obx(
-                            () => Image.asset(
-                              controller.partnerAvatar.value,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  color: AppColors.secondary.withValues(
-                                    alpha: 0.2,
-                                  ),
-                                  child: Center(
-                                    child: Obx(
-                                      () => Text(
-                                        controller.partnerName.value.isNotEmpty
-                                            ? controller.partnerName.value[0]
-                                                  .toUpperCase()
-                                            : '💕',
-                                        style: AppTextStyles.title.copyWith(
-                                          color: AppColors.secondary,
-                                          fontSize: 18,
-                                        ),
-                                      ),
+                          child: Image.asset(
+                            controller.partnerAvatar,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: AppColors.secondary.withValues(
+                                  alpha: 0.2,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    controller.partnerName.isNotEmpty
+                                        ? controller.partnerName[0]
+                                              .toUpperCase()
+                                        : '💕',
+                                    style: AppTextStyles.title.copyWith(
+                                      color: AppColors.secondary,
+                                      fontSize: 18,
                                     ),
                                   ),
-                                );
-                              },
-                            ),
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ),
@@ -160,24 +162,19 @@ class HomeView extends GetView<HomeController> {
                       Positioned(
                         right: -4,
                         bottom: -2,
-                        child: Obx(
-                          () => Container(
-                            width: 22,
-                            height: 22,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: AppColors.secondary,
-                                width: 2,
-                              ),
+                        child: Container(
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppColors.secondary,
+                              width: 2,
                             ),
-                            child: Center(
-                              child: Text(
-                                controller.partnerStatusEmoji.value,
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                            ),
+                          ),
+                          child: const Center(
+                            child: Text('💚', style: TextStyle(fontSize: 12)),
                           ),
                         ),
                       ),
@@ -194,6 +191,12 @@ class HomeView extends GetView<HomeController> {
 
   /// Partner Bottom Sheet
   void _showPartnerSheet() {
+    // Track profile view for "Stalker" badge
+    final coupleId = controller.coupleId;
+    if (coupleId != null) {
+      Get.find<DatabaseService>().incrementProfileViews(coupleId);
+    }
+
     Get.bottomSheet(
       Container(
         padding: const EdgeInsets.all(24),
@@ -243,24 +246,24 @@ class HomeView extends GetView<HomeController> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(23),
-                    child: Obx(
-                      () => Image.asset(
-                        controller.partnerAvatar.value,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            color: AppColors.secondary.withValues(alpha: 0.2),
-                            child: Center(
-                              child: Text(
-                                controller.partnerName.value[0].toUpperCase(),
-                                style: AppTextStyles.headline.copyWith(
-                                  color: AppColors.secondary,
-                                ),
+                    child: Image.asset(
+                      controller.partnerAvatar,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: AppColors.secondary.withValues(alpha: 0.2),
+                          child: Center(
+                            child: Text(
+                              controller.partnerName.isNotEmpty
+                                  ? controller.partnerName[0].toUpperCase()
+                                  : '💞',
+                              style: AppTextStyles.headline.copyWith(
+                                color: AppColors.secondary,
                               ),
                             ),
-                          );
-                        },
-                      ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -268,23 +271,16 @@ class HomeView extends GetView<HomeController> {
                 Positioned(
                   right: -4,
                   bottom: 0,
-                  child: Obx(
-                    () => Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: controller.isPartnerOnline.value
-                            ? AppColors.success
-                            : Colors.grey,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3),
-                      ),
-                      child: Center(
-                        child: Text(
-                          controller.partnerStatusEmoji.value,
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                      ),
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: AppColors.success,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 3),
+                    ),
+                    child: const Center(
+                      child: Text('💚', style: TextStyle(fontSize: 14)),
                     ),
                   ),
                 ),
@@ -294,33 +290,26 @@ class HomeView extends GetView<HomeController> {
             const SizedBox(height: 16),
 
             // Partner Name
-            Obx(
-              () => Text(
-                controller.partnerName.value,
-                style: AppTextStyles.headline.copyWith(fontSize: 24),
-              ),
+            Text(
+              controller.partnerName,
+              style: AppTextStyles.headline.copyWith(fontSize: 24),
             ),
 
             const SizedBox(height: 4),
 
             // Status Text
-            Obx(
-              () => Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    controller.partnerStatusEmoji.value,
-                    style: const TextStyle(fontSize: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('💚', style: TextStyle(fontSize: 16)),
+                const SizedBox(width: 6),
+                Text(
+                  'Online',
+                  style: AppTextStyles.body.copyWith(
+                    color: AppColors.textSecondary,
                   ),
-                  const SizedBox(width: 6),
-                  Text(
-                    controller.partnerStatusText.value,
-                    style: AppTextStyles.body.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
 
             const SizedBox(height: 20),
@@ -330,7 +319,7 @@ class HomeView extends GetView<HomeController> {
               () => Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Level
+                  // XP
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -342,10 +331,10 @@ class HomeView extends GetView<HomeController> {
                     ),
                     child: Row(
                       children: [
-                        const Text('⚡', style: TextStyle(fontSize: 16)),
+                        const Text('✨', style: TextStyle(fontSize: 16)),
                         const SizedBox(width: 4),
                         Text(
-                          'Level ${controller.partnerLevel.value}',
+                          '${controller.totalXP} XP',
                           style: AppTextStyles.bodySmall.copyWith(
                             fontWeight: FontWeight.w700,
                             color: AppColors.moneyOrange,
@@ -370,7 +359,7 @@ class HomeView extends GetView<HomeController> {
                         const Text('🔥', style: TextStyle(fontSize: 16)),
                         const SizedBox(width: 4),
                         Text(
-                          '${controller.partnerStreak.value} Streak',
+                          '${controller.streakCount} Streak',
                           style: AppTextStyles.bodySmall.copyWith(
                             fontWeight: FontWeight.w700,
                             color: AppColors.secondary,
@@ -495,14 +484,14 @@ class HomeView extends GetView<HomeController> {
       children: [
         Obx(
           () => Text(
-            '${controller.greeting}, ${controller.userName.value}! 👋',
+            '${controller.greeting}, ${controller.userName}! 👋',
             style: AppTextStyles.title,
           ),
         ),
         const SizedBox(height: 4),
         Obx(
           () => Text(
-            'with ${controller.partnerName.value} 💕',
+            'with ${controller.partnerName} 💕',
             style: AppTextStyles.bodySmall,
           ),
         ),
@@ -847,7 +836,8 @@ class HomeView extends GetView<HomeController> {
   /// Streak Counter - Hero Section dengan background berwarna
   Widget _buildStreakHero() {
     return Obx(() {
-      final isActive = controller.streakCount.value > 0;
+      final isActive = controller.streakCount > 0;
+      final protects = controller.streakProtects;
 
       return Container(
         width: double.infinity,
@@ -877,15 +867,54 @@ class HomeView extends GetView<HomeController> {
 
             const SizedBox(height: 12),
 
-            // Streak Number - VERY BIG
-            Text(
-              '${controller.streakCount.value}',
-              style: AppTextStyles.streak.copyWith(
-                color: Colors.white,
-                fontSize: 90,
-                fontWeight: FontWeight.w900,
-                height: 1,
-              ),
+            // Streak Number with Shield indicator - VERY BIG
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  '${controller.streakCount}',
+                  style: AppTextStyles.streak.copyWith(
+                    color: Colors.white,
+                    fontSize: 90,
+                    fontWeight: FontWeight.w900,
+                    height: 1,
+                  ),
+                ),
+                // NEW: Streak Protect Shields
+                if (protects > 0) ...[
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.5),
+                        width: 2,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('🛡️', style: TextStyle(fontSize: 24)),
+                        const SizedBox(width: 4),
+                        Text(
+                          'x$protects',
+                          style: AppTextStyles.subtitle.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
             ),
 
             const SizedBox(height: 8),
@@ -898,6 +927,18 @@ class HomeView extends GetView<HomeController> {
                 fontSize: 18,
               ),
             ),
+
+            // Shield info (only when has protects)
+            if (protects > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  '$protects shield tersedia untuk melindungi streak-mu',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: Colors.white.withValues(alpha: 0.7),
+                  ),
+                ),
+              ),
 
             // Start streak hint (only when inactive)
             if (!isActive)
@@ -929,7 +970,7 @@ class HomeView extends GetView<HomeController> {
             children: [
               Obx(
                 () => Text(
-                  controller.petName.value,
+                  controller.petName,
                   style: AppTextStyles.title.copyWith(fontSize: 28),
                 ),
               ),
@@ -943,18 +984,18 @@ class HomeView extends GetView<HomeController> {
                   ),
                   decoration: BoxDecoration(
                     color: _getMoodColor(
-                      controller.petMood.value,
+                      controller.petMood,
                     ).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(
-                      color: _getMoodColor(controller.petMood.value),
+                      color: _getMoodColor(controller.petMood),
                       width: 3,
                     ),
                   ),
                   child: Text(
-                    controller.petMood.value.label,
+                    controller.petMood.label,
                     style: AppTextStyles.body.copyWith(
-                      color: _getMoodColor(controller.petMood.value),
+                      color: _getMoodColor(controller.petMood),
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -974,9 +1015,7 @@ class HomeView extends GetView<HomeController> {
               shape: BoxShape.circle,
             ),
             child: Center(
-              child: Obx(
-                () => PetAvatar(mood: controller.petMood.value, size: 250),
-              ),
+              child: Obx(() => PetAvatar(mood: controller.petMood, size: 250)),
             ),
           ),
 
@@ -985,7 +1024,7 @@ class HomeView extends GetView<HomeController> {
           // Pet Message - LARGER
           Obx(
             () => Text(
-              _getPetMessage(controller.petMood.value),
+              _getPetMessage(controller.petMood),
               style: AppTextStyles.subtitle.copyWith(
                 color: AppColors.textSecondary,
                 fontSize: 17,
@@ -1002,20 +1041,20 @@ class HomeView extends GetView<HomeController> {
   Widget _buildActionButtons() {
     return Column(
       children: [
-        // Primary Action: Check In / Send Love
+        // Primary Action: Check In
         Obx(
           () => ChunkyButton(
-            text: controller.isDailyQuestCompleted.value
+            text: controller.hasCheckedInToday
                 ? '✓ Checked In Today!'
-                : 'Send Love 💕',
-            icon: controller.isDailyQuestCompleted.value
+                : 'Check In 📍',
+            icon: controller.hasCheckedInToday
                 ? Icons.check_circle_rounded
                 : Icons.favorite_rounded,
-            onPressed: controller.completeDailyQuest,
-            color: controller.isDailyQuestCompleted.value
+            onPressed: controller.checkIn,
+            color: controller.hasCheckedInToday
                 ? AppColors.success
                 : AppColors.primary,
-            shadowColor: controller.isDailyQuestCompleted.value
+            shadowColor: controller.hasCheckedInToday
                 ? AppColors.successShadow
                 : AppColors.primaryShadow,
           ),
@@ -1025,10 +1064,10 @@ class HomeView extends GetView<HomeController> {
 
         // Secondary Action: Feed Pet (only if sad)
         Obx(() {
-          if (controller.petMood.value == PetMood.sad &&
-              !controller.isDailyQuestCompleted.value) {
+          if (controller.petMood == PetMood.sad &&
+              !controller.hasCheckedInToday) {
             return ChunkyButton(
-              text: 'Feed ${controller.petName.value}',
+              text: 'Feed ${controller.petName}',
               icon: Icons.restaurant_rounded,
               onPressed: controller.feedPet,
               color: AppColors.secondary,
@@ -1063,6 +1102,231 @@ class HomeView extends GetView<HomeController> {
       case PetMood.eating:
         return 'Nyam nyam! Sedang makan... 🍖';
     }
+  }
+
+  /// Weekly Challenge Card - NEW FEATURE
+  Widget _buildWeeklyChallengeCard() {
+    return Obx(() {
+      final challenge = controller.weeklyChallenge.value;
+
+      // Don't show if no challenge
+      if (challenge == null) {
+        return const SizedBox.shrink();
+      }
+
+      final title = challenge['title'] as String? ?? 'Weekly Challenge';
+      final description = challenge['description'] as String? ?? '';
+      final currentProgress = challenge['currentProgress'] as int? ?? 0;
+      final targetProgress = challenge['targetProgress'] as int? ?? 1;
+      final rewardXP = challenge['rewardXP'] as int? ?? 0;
+      final rewardBadge = challenge['rewardBadge'] as String? ?? '🏆';
+      final isClaimed = challenge['isClaimed'] as bool? ?? false;
+      final endDateStr = challenge['endDate'] as String?;
+
+      final progress = (currentProgress / targetProgress).clamp(0.0, 1.0);
+      final isComplete = currentProgress >= targetProgress;
+
+      // Calculate days remaining
+      int daysRemaining = 0;
+      if (endDateStr != null) {
+        final endDate = DateTime.tryParse(endDateStr);
+        if (endDate != null) {
+          daysRemaining = endDate.difference(DateTime.now()).inDays;
+          if (daysRemaining < 0) daysRemaining = 0;
+        }
+      }
+
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: isClaimed
+                ? [Colors.grey.shade300, Colors.grey.shade400]
+                : [
+                    AppColors.secondary,
+                    AppColors.secondary.withValues(alpha: 0.8),
+                  ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: isClaimed
+                  ? Colors.grey.shade500
+                  : AppColors.secondaryShadow,
+              offset: const Offset(0, 6),
+              blurRadius: 0,
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header Row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Title
+                Row(
+                  children: [
+                    const Text('🎯', style: TextStyle(fontSize: 24)),
+                    const SizedBox(width: 8),
+                    Text(
+                      'WEEKLY CHALLENGE',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ],
+                ),
+                // Days remaining badge
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    isClaimed ? '✅ Claimed' : '$daysRemaining hari lagi',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // Challenge Title
+            Text(
+              title,
+              style: AppTextStyles.title.copyWith(
+                color: Colors.white,
+                fontSize: 20,
+              ),
+            ),
+
+            const SizedBox(height: 4),
+
+            Text(
+              description,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: Colors.white.withValues(alpha: 0.8),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Progress Bar
+            Stack(
+              children: [
+                Container(
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+                FractionallySizedBox(
+                  widthFactor: progress,
+                  child: Container(
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 8),
+
+            // Progress Text
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '$currentProgress / $targetProgress',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  '${(progress * 100).round()}%',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // Reward & Claim Button
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Reward info
+                Row(
+                  children: [
+                    Text(rewardBadge, style: const TextStyle(fontSize: 20)),
+                    const SizedBox(width: 8),
+                    Text(
+                      '+$rewardXP XP',
+                      style: AppTextStyles.subtitle.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+                // Claim button (only if complete and not claimed)
+                if (isComplete && !isClaimed)
+                  GestureDetector(
+                    onTap: () => controller.claimWeeklyChallenge(),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.2),
+                            offset: const Offset(0, 3),
+                            blurRadius: 0,
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        'CLAIM! 🎉',
+                        style: AppTextStyles.subtitle.copyWith(
+                          color: AppColors.secondary,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      );
+    });
   }
 }
 

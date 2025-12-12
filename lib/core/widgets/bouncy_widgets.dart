@@ -66,7 +66,7 @@ class _Bouncy3DButtonState extends State<Bouncy3DButton>
       onTapCancel: _onTapCancel,
       child: AnimatedBuilder(
         animation: _animation,
-        builder: (context, child) {
+        builder: (context, _) {
           final offset = widget.shadowHeight * _animation.value;
           return Transform.translate(
             offset: Offset(0, offset),
@@ -85,7 +85,6 @@ class _Bouncy3DButtonState extends State<Bouncy3DButton>
             ),
           );
         },
-        child: widget.child,
       ),
     );
   }

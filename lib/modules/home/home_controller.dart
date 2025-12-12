@@ -1,44 +1,116 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
 import '../../core/widgets/all_clear_dialog.dart';
 import '../../core/widgets/pet_avatar.dart';
+import '../../data/models/couple_model.dart';
 import '../../data/models/quest_model.dart';
+import '../../data/models/user_model.dart';
+import '../../data/services/auth_service.dart';
+import '../../data/services/database_service.dart';
 import '../profile/profile_controller.dart';
 
 class HomeController extends GetxController {
-  // === USER DATA ===
-  final userName = 'Axel'.obs;
-  final partnerName = 'Gea'.obs;
+  final AuthService _authService = Get.find<AuthService>();
+  final DatabaseService _dbService = Get.find<DatabaseService>();
 
-  // === PARTNER DATA ===
-  final partnerAvatar = 'assets/images/avatar_me.png'.obs;
-  final partnerStatusEmoji = '💤'.obs;
-  final partnerStatusText = 'Sedang Tidur'.obs;
-  final isPartnerOnline = false.obs;
-  final partnerLevel = 5.obs;
-  final partnerStreak = 12.obs;
+  // === REACTIVE DATA FROM FIRESTORE ===
+  final Rx<CoupleModel?> coupleData = Rx<CoupleModel?>(null);
+  final Rx<UserModel?> partnerData = Rx<UserModel?>(null);
 
-  // === RELATIONSHIP DATA ===
-  final startDate = DateTime.now().subtract(const Duration(days: 365)).obs;
+  // === LOCAL STATE ===
+  final RxBool isLoading = true.obs;
+  final RxString errorMessage = ''.obs;
 
-  int get daysTogether {
-    final now = DateTime.now();
-    return now.difference(startDate.value).inDays;
-  }
-
-  // === GAMIFICATION DATA ===
-  final streakCount = 0.obs; // Start with 0 streak (inactive)
-  final petMood = PetMood.sad.obs; // Using PetMood from pet_avatar.dart
-  final isDailyQuestCompleted = false.obs;
-
-  // === DAILY QUESTS ===
+  // === DAILY QUESTS (Now synced with Firestore) ===
   final dailyQuests = <QuestModel>[].obs;
 
-  // === PET DATA ===
-  final petName = 'Mochi'.obs;
+  // === NEW: Interaction Cooldown (FIX XP FARMING) ===
+  final Rx<DateTime?> lastInteractionTime = Rx<DateTime?>(null);
+  static const interactionCooldownSeconds = 30;
 
-  // === COMPUTED: Greeting berdasarkan waktu ===
+  // === NEW: Weekly Challenge ===
+  final Rx<Map<String, dynamic>?> weeklyChallenge = Rx<Map<String, dynamic>?>(
+    null,
+  );
+
+  // Stream subscription
+  StreamSubscription? _coupleSubscription;
+  StreamSubscription? _partnerSubscription;
+
+  // === COMPUTED GETTERS ===
+
+  /// Get current user name
+  String get userName => _authService.userModel.value?.name ?? 'User';
+
+  /// Get partner name
+  String get partnerName => partnerData.value?.name ?? 'Partner';
+
+  /// Get partner avatar (placeholder for now)
+  String get partnerAvatar => 'assets/images/avatar_me.png';
+
+  /// Get couple ID
+  String? get coupleId => _authService.userModel.value?.coupleId;
+
+  /// Get partner ID
+  String? get partnerId => _authService.userModel.value?.partnerId;
+
+  /// Get days together
+  int get daysTogether => coupleData.value?.daysTogether ?? 0;
+
+  /// Get streak count
+  int get streakCount => coupleData.value?.streak ?? 0;
+
+  /// Get streak message
+  String get streakMessage =>
+      coupleData.value?.streakMessage ?? 'Start your streak!';
+
+  /// NEW: Get streak protects available
+  int get streakProtects => coupleData.value?.streakProtects ?? 0;
+
+  /// Get pet mood as PetMood enum
+  PetMood get petMood {
+    final moodString = coupleData.value?.petMood ?? 'idle';
+    switch (moodString) {
+      case 'sad':
+        return PetMood.sad;
+      case 'eating':
+        return PetMood.eating;
+      default:
+        return PetMood.idle;
+    }
+  }
+
+  /// Get pet name
+  String get petName => coupleData.value?.petName ?? 'Mochi';
+
+  /// Get total XP
+  int get totalXP => coupleData.value?.totalXP ?? 0;
+
+  /// Check if already checked in today
+  bool get hasCheckedInToday => coupleData.value?.hasCheckedInToday ?? false;
+
+  /// NEW: Check if can interact (cooldown check)
+  bool get canInteract {
+    final lastTime = lastInteractionTime.value;
+    if (lastTime == null) return true;
+    return DateTime.now().difference(lastTime).inSeconds >=
+        interactionCooldownSeconds;
+  }
+
+  /// NEW: Remaining cooldown seconds
+  int get interactionCooldownRemaining {
+    final lastTime = lastInteractionTime.value;
+    if (lastTime == null) return 0;
+    final elapsed = DateTime.now().difference(lastTime).inSeconds;
+    return (interactionCooldownSeconds - elapsed).clamp(
+      0,
+      interactionCooldownSeconds,
+    );
+  }
+
+  /// Greeting based on time
   String get greeting {
     final hour = DateTime.now().hour;
     if (hour < 12) {
@@ -50,20 +122,133 @@ class HomeController extends GetxController {
     }
   }
 
-  // === COMPUTED: Streak Message ===
-  String get streakMessage {
-    if (streakCount.value >= 30) {
-      return 'Incredible! 🔥';
-    } else if (streakCount.value >= 14) {
-      return 'On Fire! 🔥';
-    } else if (streakCount.value >= 7) {
-      return 'Keep Going! 💪';
-    } else {
-      return 'Days Together 💕';
+  @override
+  void onInit() {
+    super.onInit();
+    _initializeData();
+  }
+
+  @override
+  void onClose() {
+    _coupleSubscription?.cancel();
+    _partnerSubscription?.cancel();
+    super.onClose();
+  }
+
+  /// Initialize real-time data streams
+  Future<void> _initializeData() async {
+    try {
+      isLoading.value = true;
+
+      // Load user model first
+      await _authService.loadUserModel();
+
+      final userModel = _authService.userModel.value;
+      if (userModel == null) {
+        errorMessage.value = 'User tidak ditemukan';
+        return;
+      }
+
+      // Stream couple data
+      if (userModel.coupleId != null) {
+        // Check and reset quests if new day
+        await _checkAndResetQuestsIfNeeded(userModel.coupleId!);
+
+        // Check and auto-protect streak
+        await _dbService.checkAndAutoProtectStreak(userModel.coupleId!);
+
+        // Reset monthly protects if needed
+        await _dbService.resetMonthlyProtects(userModel.coupleId!);
+
+        // Initialize weekly challenge
+        weeklyChallenge.value = await _dbService.initWeeklyChallenge(
+          userModel.coupleId!,
+        );
+
+        // Reset daily badge counters (profileViewsToday, appOpensThisHour)
+        await _dbService.resetDailyBadgeProgress(userModel.coupleId!);
+
+        // Track app open for "Bucin" badge
+        await _dbService.incrementAppOpens(userModel.coupleId!);
+
+        // Increment days without withdrawal (if no withdrawal was made)
+        // This gets reset in FinanceController when withdrawal happens
+        await _dbService.incrementDaysWithoutWithdrawal(userModel.coupleId!);
+
+        _coupleSubscription = _dbService
+            .streamCoupleData(userModel.coupleId!)
+            .listen((couple) {
+              coupleData.value = couple;
+
+              // Sync quest progress from Firestore
+              if (couple != null) {
+                _syncQuestsFromFirestore(couple);
+
+                // Update weekly challenge
+                weeklyChallenge.value = couple.weeklyChallenge;
+              }
+
+              // Check pet mood - if not checked in today, pet is sad
+              if (couple != null && !couple.hasCheckedInToday) {
+                if (couple.petMood == 'idle') {
+                  // Don't update if eating
+                  _dbService.updatePetMood(userModel.coupleId!, 'sad');
+                }
+              }
+            });
+      }
+
+      // Stream partner data
+      if (userModel.partnerId != null) {
+        _partnerSubscription = _dbService
+            .streamUser(userModel.partnerId!)
+            .listen((partner) {
+              partnerData.value = partner;
+            });
+      }
+    } catch (e) {
+      errorMessage.value = 'Gagal memuat data: $e';
+    } finally {
+      isLoading.value = false;
     }
   }
 
-  // === QUEST METHODS ===
+  /// NEW: Check and reset quests if new day
+  Future<void> _checkAndResetQuestsIfNeeded(String coupleId) async {
+    final couple = await _dbService.getCoupleData(coupleId);
+    if (couple != null) {
+      final wasReset = await _dbService.checkAndResetQuestsIfNewDay(
+        coupleId,
+        couple.lastQuestResetDate,
+      );
+      if (wasReset) {
+        // Quests were reset, initialize fresh
+        _initDailyQuests();
+      } else {
+        // Load progress from Firestore
+        _syncQuestsFromFirestore(couple);
+      }
+    } else {
+      _initDailyQuests();
+    }
+  }
+
+  /// NEW: Sync quests from Firestore
+  void _syncQuestsFromFirestore(CoupleModel couple) {
+    final progress = couple.dailyQuestProgress;
+
+    // Initialize quests first if empty
+    if (dailyQuests.isEmpty) {
+      _initDailyQuests();
+    }
+
+    // Update progress from Firestore
+    for (var quest in dailyQuests) {
+      final firestoreProgress = progress[quest.type] ?? 0;
+      quest.currentProgress = firestoreProgress;
+    }
+    dailyQuests.refresh();
+  }
 
   /// Initialize daily quests
   void _initDailyQuests() {
@@ -101,80 +286,28 @@ class HomeController extends GetxController {
     ];
   }
 
-  /// Update quest progress by type
-  void updateQuestProgress(String type) {
-    final index = dailyQuests.indexWhere((q) => q.type == type);
-    if (index != -1) {
-      final quest = dailyQuests[index];
-      if (!quest.isCompleted && !quest.isClaimed) {
-        quest.currentProgress++;
-        dailyQuests.refresh();
+  // === ACTIONS ===
 
-        // Show notification if completed
-        if (quest.isCompleted) {
-          Get.snackbar(
-            '🎉 Misi Selesai!',
-            '${quest.title} - Tap untuk klaim ${quest.rewardXP} XP!',
-            snackPosition: SnackPosition.TOP,
-            duration: const Duration(seconds: 3),
-          );
-        }
-      }
-    }
+  /// Perform daily check-in
+  Future<void> checkIn() async {
+    if (coupleId == null) return;
+    await _dbService.performCheckIn(coupleId!);
   }
 
-  /// Claim completed quest
-  void claimQuest(QuestModel quest) {
-    if (quest.isCompleted && !quest.isClaimed) {
-      final index = dailyQuests.indexWhere((q) => q.id == quest.id);
-      if (index != -1) {
-        dailyQuests[index].isClaimed = true;
-        dailyQuests.refresh();
+  /// Feed the pet
+  Future<void> feedPet() async {
+    if (coupleId == null) return;
 
-        // Add XP to profile
-        try {
-          final profileController = Get.find<ProfileController>();
-          profileController.addXP(quest.rewardXP);
-        } catch (e) {
-          // ProfileController not found, just show snackbar
-        }
-
-        Get.snackbar(
-          '✨ Quest Claimed!',
-          '+${quest.rewardXP} XP didapatkan!',
-          snackPosition: SnackPosition.TOP,
-          duration: const Duration(seconds: 2),
-        );
-
-        // Check if all quests are claimed (ALL CLEAR!)
-        _checkAllClearCombo();
-      }
+    if (petMood != PetMood.sad) {
+      Get.snackbar('Info', '${petName} tidak lapar 😊');
+      return;
     }
+
+    await _dbService.feedPet(coupleId!);
+    Get.snackbar('🍔 Nyam!', '${petName} sedang makan...');
   }
 
-  /// Check if all daily quests are claimed -> trigger All Clear celebration
-  void _checkAllClearCombo() {
-    if (dailyQuests.isEmpty) return;
-
-    final allClaimed = dailyQuests.every((q) => q.isClaimed);
-
-    if (allClaimed) {
-      // Add bonus 50 XP
-      try {
-        final profileController = Get.find<ProfileController>();
-        profileController.addXP(50);
-      } catch (e) {
-        // ProfileController not found
-      }
-
-      // Show All Clear Dialog
-      Get.dialog(const AllClearDialog(), barrierDismissible: false);
-    }
-  }
-
-  // === PARTNER ACTIONS ===
-
-  /// Show interaction animation dialog (Lottie)
+  /// Show interaction dialog with Lottie
   void _showInteractionDialog() {
     Get.dialog(
       Dialog(
@@ -203,92 +336,217 @@ class HomeController extends GetxController {
     });
   }
 
+  /// NEW: Check cooldown before interaction
+  bool _checkInteractionCooldown() {
+    if (!canInteract) {
+      Get.snackbar(
+        '⏳ Tunggu Sebentar',
+        'Bisa interaksi lagi dalam $interactionCooldownRemaining detik',
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 2),
+      );
+      return false;
+    }
+    lastInteractionTime.value = DateTime.now();
+    return true;
+  }
+
+  /// Poke partner (with cooldown)
   void pokePartner() {
+    if (!_checkInteractionCooldown()) return;
+
     updateQuestProgress('interaction');
     _showInteractionDialog();
+
+    if (partnerId != null) {
+      _dbService.pokePartner(partnerId!);
+    }
+
     Future.delayed(const Duration(seconds: 2), () {
       Get.snackbar(
         '👋 Colek!',
-        'Kamu mencolek ${partnerName.value}!',
+        'Kamu mencolek $partnerName!',
         snackPosition: SnackPosition.TOP,
         duration: const Duration(seconds: 2),
       );
     });
   }
 
+  /// Send love (with cooldown)
   void sendLove() {
+    if (!_checkInteractionCooldown()) return;
+
     updateQuestProgress('interaction');
     _showInteractionDialog();
+
     Future.delayed(const Duration(seconds: 2), () {
       Get.snackbar(
         '❤️ Rindu Terkirim!',
-        '${partnerName.value} menerima cintamu 💕',
+        '$partnerName menerima cintamu 💕',
         snackPosition: SnackPosition.TOP,
         duration: const Duration(seconds: 2),
       );
     });
   }
 
+  /// Notify partner (with cooldown)
   void notifyPartner() {
+    if (!_checkInteractionCooldown()) return;
+
     updateQuestProgress('interaction');
     Get.snackbar(
       '📢 Notif Terkirim!',
-      '${partnerName.value} akan segera buka app!',
+      '$partnerName akan segera buka app!',
       snackPosition: SnackPosition.TOP,
       duration: const Duration(seconds: 2),
     );
   }
 
-  // === ACTIONS ===
+  // === QUEST METHODS ===
 
-  void completeDailyQuest() {
-    if (!isDailyQuestCompleted.value) {
-      isDailyQuestCompleted.value = true;
-      petMood.value = PetMood.idle; // Pet becomes idle (content) after check-in
-      streakCount.value++;
-      updateQuestProgress('interaction');
-      Get.snackbar(
-        '💕 Love Sent!',
-        'Your pet is now happy! Streak: ${streakCount.value} days',
-        snackPosition: SnackPosition.TOP,
-        duration: const Duration(seconds: 2),
-      );
-    } else {
-      Get.snackbar(
-        '✨ Already Done!',
-        'You\'ve already checked in today. See you tomorrow!',
-        snackPosition: SnackPosition.TOP,
-        duration: const Duration(seconds: 2),
-      );
-    }
-  }
+  /// Update quest progress by type (now persisted to Firestore)
+  void updateQuestProgress(String type) {
+    final index = dailyQuests.indexWhere((q) => q.type == type);
+    if (index != -1) {
+      final quest = dailyQuests[index];
+      if (!quest.isCompleted && !quest.isClaimed) {
+        quest.currentProgress++;
+        dailyQuests.refresh();
 
-  void feedPet() {
-    if (petMood.value == PetMood.sad) {
-      petMood.value = PetMood.eating;
-      Get.snackbar(
-        '🍖 Yummy!',
-        '${petName.value} is eating!',
-        snackPosition: SnackPosition.TOP,
-        duration: const Duration(seconds: 2),
-      );
-      // After eating, go back to idle
-      Future.delayed(const Duration(seconds: 3), () {
-        if (petMood.value == PetMood.eating) {
-          petMood.value = PetMood.idle;
+        // NEW: Persist to Firestore
+        if (coupleId != null) {
+          _dbService.updateQuestProgress(
+            coupleId!,
+            type,
+            quest.currentProgress,
+          );
         }
-      });
+
+        // NEW: Update weekly challenge if applicable
+        _updateWeeklyChallengeProgress(type);
+
+        // Show notification if completed
+        if (quest.isCompleted) {
+          Get.snackbar(
+            '🎉 Misi Selesai!',
+            '${quest.title} - Tap untuk klaim ${quest.rewardXP} XP!',
+            snackPosition: SnackPosition.TOP,
+            duration: const Duration(seconds: 3),
+          );
+        }
+      }
     }
   }
 
-  void resetDailyQuest() {
-    isDailyQuestCompleted.value = false;
-    petMood.value = PetMood.sad; // Pet becomes sad when quest reset
+  /// NEW: Update weekly challenge progress based on action type
+  void _updateWeeklyChallengeProgress(String actionType) {
+    final challenge = weeklyChallenge.value;
+    if (challenge == null || coupleId == null) return;
+
+    final challengeId = challenge['id'] as String?;
+    final currentProgress = challenge['currentProgress'] as int? ?? 0;
+    final targetProgress = challenge['targetProgress'] as int? ?? 1;
+    final isClaimed = challenge['isClaimed'] as bool? ?? false;
+
+    if (isClaimed || currentProgress >= targetProgress) return;
+
+    bool shouldIncrement = false;
+
+    // Check if this action type matches the challenge
+    if (challengeId == 'savings_streak' && actionType == 'savings') {
+      shouldIncrement = true;
+    } else if (challengeId == 'interaction_pro' &&
+        actionType == 'interaction') {
+      shouldIncrement = true;
+    }
+    // check_in_master is handled in checkIn method
+
+    if (shouldIncrement) {
+      _dbService.updateWeeklyChallengeProgress(coupleId!, currentProgress + 1);
+    }
   }
 
-  @override
-  void onInit() {
-    super.onInit();
-    _initDailyQuests();
+  /// NEW: Claim weekly challenge reward
+  Future<void> claimWeeklyChallenge() async {
+    if (coupleId == null) return;
+    await _dbService.claimWeeklyChallengeReward(coupleId!);
+  }
+
+  /// Claim completed quest
+  void claimQuest(QuestModel quest) {
+    if (quest.isCompleted && !quest.isClaimed) {
+      final index = dailyQuests.indexWhere((q) => q.id == quest.id);
+      if (index != -1) {
+        dailyQuests[index].isClaimed = true;
+        dailyQuests.refresh();
+
+        // Add XP to couple
+        if (coupleId != null) {
+          _dbService.addXP(coupleId!, quest.rewardXP);
+        }
+
+        // Also add to profile
+        try {
+          final profileController = Get.find<ProfileController>();
+          profileController.addXP(quest.rewardXP);
+        } catch (e) {
+          // ProfileController not found
+        }
+
+        Get.snackbar(
+          '✨ Quest Claimed!',
+          '+${quest.rewardXP} XP didapatkan!',
+          snackPosition: SnackPosition.TOP,
+          duration: const Duration(seconds: 2),
+        );
+
+        // Check if all quests are claimed
+        _checkAllClearCombo();
+      }
+    }
+  }
+
+  /// Check if all daily quests are claimed
+  void _checkAllClearCombo() {
+    if (dailyQuests.isEmpty) return;
+
+    final allClaimed = dailyQuests.every((q) => q.isClaimed);
+
+    if (allClaimed) {
+      // Add bonus 50 XP
+      if (coupleId != null) {
+        _dbService.addXP(coupleId!, 50);
+      }
+
+      try {
+        final profileController = Get.find<ProfileController>();
+        profileController.addXP(50);
+      } catch (e) {
+        // ProfileController not found
+      }
+
+      // Show All Clear Dialog
+      Get.dialog(const AllClearDialog(), barrierDismissible: false);
+    }
+  }
+
+  /// Reset daily quests (for testing)
+  void resetDailyQuest() {
+    for (var quest in dailyQuests) {
+      quest.currentProgress = 0;
+      quest.isClaimed = false;
+    }
+    dailyQuests.refresh();
+
+    if (coupleId != null) {
+      _dbService.resetDailyQuests(coupleId!);
+      _dbService.updatePetMood(coupleId!, 'sad');
+    }
+
+    Get.snackbar(
+      '🔄 Quest Reset',
+      'Semua misi direset!',
+      snackPosition: SnackPosition.TOP,
+    );
   }
 }

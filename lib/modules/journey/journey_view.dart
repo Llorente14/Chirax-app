@@ -42,7 +42,7 @@ class JourneyView extends GetView<JourneyController> {
   /// Chunky FAB dengan 3D shadow effect
   Widget _buildChunkyFAB() {
     return GestureDetector(
-      onTap: () => showAddEventSheet(controller),
+      onTap: () => controller.showAddEventSheet(),
       child: Container(
         width: 60,
         height: 60,

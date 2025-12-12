@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SavingsGoal {
   final String id;
@@ -41,6 +42,42 @@ class SavingsGoal {
   /// Remaining amount
   double get remainingAmount =>
       (targetAmount - currentAmount).clamp(0, targetAmount);
+
+  /// Convert to Firestore map
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      'targetAmount': targetAmount,
+      'currentAmount': currentAmount,
+      'iconEmoji': iconEmoji,
+      'color': color.value, // Store as int
+      'isHighlighted': isHighlighted,
+      'isCompleted': isCompleted,
+      'completedDate': completedDate?.toIso8601String(),
+      'createdDate': createdDate.toIso8601String(),
+    };
+  }
+
+  /// Create from Firestore document
+  factory SavingsGoal.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    return SavingsGoal(
+      id: doc.id,
+      title: data['title'] ?? 'Untitled',
+      targetAmount: (data['targetAmount'] ?? 0).toDouble(),
+      currentAmount: (data['currentAmount'] ?? 0).toDouble(),
+      iconEmoji: data['iconEmoji'] ?? '🎯',
+      color: Color(data['color'] ?? 0xFF58CC02),
+      isHighlighted: data['isHighlighted'] ?? false,
+      isCompleted: data['isCompleted'] ?? false,
+      completedDate: data['completedDate'] != null
+          ? DateTime.tryParse(data['completedDate'])
+          : null,
+      createdDate: data['createdDate'] != null
+          ? DateTime.tryParse(data['createdDate']) ?? DateTime.now()
+          : DateTime.now(),
+    );
+  }
 
   /// Copy with updated values
   SavingsGoal copyWith({
