@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/utils/sound_helper.dart';
 import '../../core/widgets/bouncy_widgets.dart';
 import '../../core/widgets/juicy_confirmation_dialog.dart';
 import '../home/home_controller.dart';
@@ -23,13 +24,19 @@ class SettingsView extends GetView<ProfileController> {
             Icons.arrow_back_rounded,
             color: AppColors.textPrimary,
           ),
-          onPressed: () => Get.back(),
+          onPressed: () {
+            SoundHelper.playPop();
+            Get.back();
+          },
         ),
         title: Text('Pengaturan', style: AppTextStyles.title),
         centerTitle: true,
         actions: [
           TextButton(
-            onPressed: () => Get.back(),
+            onPressed: () {
+              SoundHelper.playPop();
+              Get.back();
+            },
             child: Text(
               'Selesai',
               style: AppTextStyles.body.copyWith(
@@ -56,6 +63,15 @@ class SettingsView extends GetView<ProfileController> {
             _buildSectionTitle('Preferensi'),
             const SizedBox(height: 12),
             _buildSettingsGroup([
+              _buildSettingToggle(
+                icon: Icons.volume_up_rounded,
+                iconColor: AppColors.primary,
+                title: 'Efek Suara',
+                subtitle: 'Putar suara saat interaksi',
+                value: controller.isSoundEnabled,
+                onChanged: controller.toggleSound,
+              ),
+              Divider(height: 1, color: Colors.grey.shade200),
               _buildSettingToggle(
                 icon: Icons.notifications_rounded,
                 iconColor: AppColors.secondary,

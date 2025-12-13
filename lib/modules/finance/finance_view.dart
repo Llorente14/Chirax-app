@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/utils/sound_helper.dart';
 import '../../core/widgets/bouncy_widgets.dart';
 import '../../core/widgets/chunky_button.dart';
 import '../../core/widgets/chunky_card.dart';
@@ -388,6 +389,7 @@ class FinanceView extends GetView<FinanceController> {
   void _showAddSavingsSheet() {
     controller.amountController.clear();
 
+    SoundHelper.playSwipe();
     Get.bottomSheet(
       Container(
         padding: const EdgeInsets.all(24),

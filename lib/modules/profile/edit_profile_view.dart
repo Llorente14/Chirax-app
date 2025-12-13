@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/utils/sound_helper.dart';
 import 'profile_controller.dart';
 
 class EditProfileView extends GetView<ProfileController> {
@@ -25,7 +26,10 @@ class EditProfileView extends GetView<ProfileController> {
             Icons.arrow_back_rounded,
             color: AppColors.textPrimary,
           ),
-          onPressed: () => Get.back(),
+          onPressed: () {
+            SoundHelper.playPop();
+            Get.back();
+          },
         ),
         title: Text('Edit Profil', style: AppTextStyles.title),
         centerTitle: true,
@@ -82,6 +86,7 @@ class EditProfileView extends GetView<ProfileController> {
                 onTap: controller.isLoading.value
                     ? null
                     : () async {
+                        SoundHelper.playClick();
                         // Parse birthDate
                         final birthDate = selectedBirthDate.value;
 
@@ -150,75 +155,91 @@ class EditProfileView extends GetView<ProfileController> {
     );
   }
 
-  /// Avatar Selector - 3 Options: Upload, Kaito, Default
+  /// Avatar Selector - Grid Layout: Upload, Default, + Presets
   Widget _buildAvatarSelector() {
     final currentAvatar = controller.rxAvatar.value;
     final isBase64 = currentAvatar.startsWith('base64:');
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    return Column(
       children: [
-        // Option 1: Upload from Gallery (shows preview if uploaded)
-        _buildAvatarOption(
-          customChild: isBase64
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(35),
-                  child: Image.memory(
-                    base64Decode(currentAvatar.replaceFirst('base64:', '')),
+        // Row 1: Upload + Default
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Upload from Gallery
+            _buildAvatarOption(
+              customChild: isBase64
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(35),
+                      child: Image.memory(
+                        base64Decode(currentAvatar.replaceFirst('base64:', '')),
+                        width: 70,
+                        height: 70,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 70,
+                          height: 70,
+                          color: AppColors.primary,
+                          child: const Icon(
+                            Icons.camera_alt_rounded,
+                            color: Colors.white,
+                            size: 32,
+                          ),
+                        ),
+                      ),
+                    )
+                  : null,
+              icon: isBase64 ? null : Icons.camera_alt_rounded,
+              label: 'Upload',
+              backgroundColor: AppColors.primary,
+              iconColor: Colors.white,
+              isSelected: isBase64,
+              onTap: () => controller.uploadFromGallery(),
+            ),
+            const SizedBox(width: 20),
+            // Default
+            _buildAvatarOption(
+              icon: Icons.person_rounded,
+              label: 'Default',
+              backgroundColor: Colors.grey.shade300,
+              iconColor: Colors.grey.shade600,
+              isSelected: currentAvatar == 'DEFAULT',
+              onTap: () => controller.resetToDefault(),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        // Row 2: Preset Avatars (Centered with Wrap)
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 16,
+          runSpacing: 12,
+          children: controller.avatarPresets.map((fileName) {
+            final assetPath = 'assets/images/avatars/$fileName';
+            final name = fileName.replaceAll('.png', '');
+            final displayName = name[0].toUpperCase() + name.substring(1);
+
+            return _buildAvatarOption(
+              customChild: ClipRRect(
+                borderRadius: BorderRadius.circular(35),
+                child: Image.asset(
+                  assetPath,
+                  width: 70,
+                  height: 70,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
                     width: 70,
                     height: 70,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      width: 70,
-                      height: 70,
-                      color: AppColors.primary,
-                      child: const Icon(
-                        Icons.camera_alt_rounded,
-                        color: Colors.white,
-                        size: 32,
-                      ),
-                    ),
+                    color: Colors.grey.shade200,
+                    child: const Icon(Icons.person, size: 32),
                   ),
-                )
-              : null,
-          icon: isBase64 ? null : Icons.camera_alt_rounded,
-          label: 'Upload',
-          backgroundColor: AppColors.primary,
-          iconColor: Colors.white,
-          isSelected: isBase64,
-          onTap: () => controller.uploadFromGallery(),
-        ),
-
-        // Option 2: Kaito Avatar
-        _buildAvatarOption(
-          customChild: ClipRRect(
-            borderRadius: BorderRadius.circular(35),
-            child: Image.asset(
-              'assets/images/avatar_me.png',
-              width: 70,
-              height: 70,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
-                width: 70,
-                height: 70,
-                color: Colors.grey.shade200,
-                child: const Icon(Icons.person, size: 32),
+                ),
               ),
-            ),
-          ),
-          label: 'Kaito',
-          isSelected: currentAvatar.startsWith('assets'),
-          onTap: () => controller.selectKaitoAvatar(),
-        ),
-
-        // Option 3: Default
-        _buildAvatarOption(
-          icon: Icons.person_rounded,
-          label: 'Default',
-          backgroundColor: Colors.grey.shade300,
-          iconColor: Colors.grey.shade600,
-          isSelected: currentAvatar == 'DEFAULT',
-          onTap: () => controller.resetToDefault(),
+              label: displayName,
+              isSelected: currentAvatar == assetPath,
+              onTap: () => controller.selectPresetAvatar(fileName),
+            );
+          }).toList(),
         ),
       ],
     );
@@ -234,7 +255,10 @@ class EditProfileView extends GetView<ProfileController> {
     required VoidCallback onTap,
   }) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        SoundHelper.playClick();
+        onTap();
+      },
       child: Column(
         children: [
           Stack(
@@ -308,6 +332,7 @@ class EditProfileView extends GetView<ProfileController> {
   }) {
     return GestureDetector(
       onTap: () async {
+        SoundHelper.playClick();
         final picked = await showDatePicker(
           context: context,
           initialDate: selectedDate.value ?? DateTime(2000, 1, 1),

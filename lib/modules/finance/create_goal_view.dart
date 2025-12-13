@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/utils/sound_helper.dart';
 import 'finance_controller.dart';
 
 class CreateGoalView extends GetView<FinanceController> {
@@ -56,7 +57,10 @@ class CreateGoalView extends GetView<FinanceController> {
             Icons.arrow_back_rounded,
             color: AppColors.textPrimary,
           ),
-          onPressed: () => Get.back(),
+          onPressed: () {
+            SoundHelper.playPop();
+            Get.back();
+          },
         ),
         title: Text('Buat Target Baru', style: AppTextStyles.title),
         centerTitle: true,
@@ -197,7 +201,10 @@ class CreateGoalView extends GetView<FinanceController> {
                 children: emojis.map((emoji) {
                   final isSelected = selectedEmoji.value == emoji;
                   return GestureDetector(
-                    onTap: () => selectedEmoji.value = emoji,
+                    onTap: () {
+                      SoundHelper.playClick();
+                      selectedEmoji.value = emoji;
+                    },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       width: 56,
@@ -253,7 +260,10 @@ class CreateGoalView extends GetView<FinanceController> {
                 children: colors.map((color) {
                   final isSelected = selectedColor.value == color;
                   return GestureDetector(
-                    onTap: () => selectedColor.value = color,
+                    onTap: () {
+                      SoundHelper.playClick();
+                      selectedColor.value = color;
+                    },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       width: 40,
@@ -339,6 +349,7 @@ class CreateGoalView extends GetView<FinanceController> {
                   // Set loading
                   isLoading.value = true;
 
+                  SoundHelper.playClick();
                   // Simulate saving delay
                   await Future.delayed(const Duration(milliseconds: 500));
 

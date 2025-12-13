@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/sound_helper.dart';
 import '../../data/models/savings_goal.dart';
 import '../../data/services/auth_service.dart';
 import '../../data/services/database_service.dart';
@@ -150,6 +151,7 @@ class FinanceController extends GetxController {
     final goal = goals.firstWhereOrNull((g) => g.id == id);
     if (goal == null) return;
 
+    SoundHelper.playError();
     await _dbService.deleteGoal(coupleId!, id);
 
     // Reset selected index
@@ -184,6 +186,8 @@ class FinanceController extends GetxController {
       newAmount,
       addedAmount: amount, // Hook to update totalAssets
     );
+
+    SoundHelper.playCoins();
 
     // Hook to quest system - update savings quest progress
     if (Get.isRegistered<HomeController>()) {

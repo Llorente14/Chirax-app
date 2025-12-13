@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/utils/sound_helper.dart';
 import '../../core/widgets/bouncy_widgets.dart';
 import 'profile_controller.dart';
 import 'settings_view.dart';
@@ -73,7 +74,10 @@ class ProfileView extends GetView<ProfileController> {
                 Text('Profil', style: AppTextStyles.headline),
                 // Settings Button
                 GestureDetector(
-                  onTap: () => Get.to(() => const SettingsView()),
+                  onTap: () {
+                    SoundHelper.playClick();
+                    Get.to(() => const SettingsView());
+                  },
                   child: Container(
                     width: 44,
                     height: 44,
@@ -234,7 +238,10 @@ class ProfileView extends GetView<ProfileController> {
           right: -8,
           bottom: 0,
           child: GestureDetector(
-            onTap: () => Get.to(() => const EditProfileView()),
+            onTap: () {
+              SoundHelper.playClick();
+              Get.to(() => const EditProfileView());
+            },
             child: Container(
               width: 40,
               height: 40,
@@ -406,7 +413,10 @@ class ProfileView extends GetView<ProfileController> {
               ],
             ),
             Bouncy3DButton(
-              onTap: () => Get.to(() => const AllBadgesView()),
+              onTap: () {
+                SoundHelper.playClick();
+                Get.to(() => const AllBadgesView());
+              },
               shadowColor: AppColors.primaryShadow,
               shadowHeight: 3,
               borderRadius: BorderRadius.circular(12),

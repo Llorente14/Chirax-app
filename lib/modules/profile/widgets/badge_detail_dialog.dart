@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/sound_helper.dart';
 import '../../../data/models/badge_model.dart';
 import '../profile_controller.dart';
 
@@ -13,6 +14,7 @@ class BadgeDetailDialog extends StatelessWidget {
 
   /// Static helper untuk menampilkan dialog dengan badgeId
   static void show(BadgeModel badge) {
+    SoundHelper.playClick();
     Get.dialog(
       BadgeDetailDialog(badgeId: badge.id),
       barrierColor: Colors.black.withValues(alpha: 0.7),
@@ -246,7 +248,10 @@ class BadgeDetailDialog extends StatelessWidget {
 
                     // Close Button
                     GestureDetector(
-                      onTap: () => Get.back(),
+                      onTap: () {
+                        SoundHelper.playSwipe();
+                        Get.back();
+                      },
                       child: Container(
                         width: double.infinity,
                         height: 52,

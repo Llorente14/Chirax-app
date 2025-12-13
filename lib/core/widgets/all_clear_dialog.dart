@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
+import '../utils/sound_helper.dart';
 
 /// Dialog perayaan All Clear - muncul saat semua misi harian selesai
 class AllClearDialog extends StatefulWidget {
@@ -15,6 +16,12 @@ class AllClearDialog extends StatefulWidget {
 
 class _AllClearDialogState extends State<AllClearDialog> {
   bool _isButtonPressed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    SoundHelper.playTada();
+  }
 
   @override
   Widget build(BuildContext context) {

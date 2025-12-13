@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/utils/sound_helper.dart';
 import '../../data/models/journey_event.dart';
 import '../../data/services/auth_service.dart';
 import '../../data/services/database_service.dart';
@@ -102,6 +103,7 @@ class JourneyController extends GetxController {
 
     final result = await _dbService.addJourneyEvent(coupleId!, newEvent);
     if (result != null) {
+      SoundHelper.playSwipe();
       // Track badge progress: Memories Saved for "Memory Hoarder" badge
       await _dbService.incrementMemoriesSaved(coupleId!);
 
@@ -199,6 +201,7 @@ class JourneyController extends GetxController {
     selectedCategoryIndex.value = 0;
     isSurpriseEvent.value = false;
 
+    SoundHelper.playSwipe();
     Get.bottomSheet(
       Container(
         padding: const EdgeInsets.all(20),

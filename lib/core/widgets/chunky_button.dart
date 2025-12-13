@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../utils/sound_helper.dart';
 
 /// ChunkyButton - Tombol 3D style Duolingo
 /// Menggunakan Stack untuk efek shadow yang lebih jelas
@@ -43,6 +44,7 @@ class _ChunkyButtonState extends State<ChunkyButton> {
       onTapDown: (_) => setState(() => _isPressed = true),
       onTapUp: (_) {
         setState(() => _isPressed = false);
+        SoundHelper.playClick();
         widget.onPressed();
       },
       onTapCancel: () => setState(() => _isPressed = false),

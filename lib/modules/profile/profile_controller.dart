@@ -14,9 +14,10 @@ class ProfileController extends GetxController {
   final AuthService _authService = Get.find<AuthService>();
   final DatabaseService _dbService = Get.find<DatabaseService>();
 
-  // === SECURITY ===
+  // === SECURITY & PREFERENCES ===
   final isBiometricActive = false.obs;
   final isNotificationActive = true.obs;
+  final isSoundEnabled = true.obs; // NEW: Sound effects toggle
 
   // === REACTIVE PROFILE DATA ===
   final rxName = ''.obs;
@@ -119,6 +120,10 @@ class ProfileController extends GetxController {
     isNotificationActive.value = val;
   }
 
+  void toggleSound(bool val) {
+    isSoundEnabled.value = val;
+  }
+
   // === UPDATE PROFILE (CRITICAL FIX) ===
   Future<void> updateProfile({
     required String name,
@@ -219,18 +224,23 @@ class ProfileController extends GetxController {
     }
   }
 
-  /// Option 2: Select Kaito Avatar (Asset)
-  Future<void> selectKaitoAvatar() async {
-    const assetPath = 'assets/images/avatar_me.png';
+  // === PRESET AVATARS ===
+  final List<String> avatarPresets = ['kaito.png', 'conan.png', 'kogoro.png'];
+
+  /// Option 2: Select Preset Avatar (Generic)
+  Future<void> selectPresetAvatar(String fileName) async {
+    final assetPath = 'assets/images/avatars/$fileName';
 
     isLoading.value = true;
     try {
       await _saveAvatarToFirestore(assetPath);
       rxAvatar.value = assetPath;
 
+      // Get name from filename (without extension)
+      final name = fileName.replaceAll('.png', '').toUpperCase();
       Get.snackbar(
         '✅ Avatar Updated',
-        'Avatar Kaito dipilih!',
+        'Avatar $name dipilih!',
         snackPosition: SnackPosition.TOP,
       );
     } finally {

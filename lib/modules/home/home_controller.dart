@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
+import '../../core/utils/sound_helper.dart';
 import '../../core/widgets/all_clear_dialog.dart';
 import '../../core/widgets/pet_avatar.dart';
 import '../../data/models/couple_model.dart';
@@ -323,6 +324,7 @@ class HomeController extends GetxController {
   Future<void> checkIn() async {
     if (coupleId == null) return;
     await _dbService.performCheckIn(coupleId!);
+    SoundHelper.playIgnite();
   }
 
   /// Feed the pet
@@ -386,6 +388,7 @@ class HomeController extends GetxController {
   void pokePartner() {
     if (!_checkInteractionCooldown()) return;
 
+    SoundHelper.playMagic();
     updateQuestProgress('interaction');
     _showInteractionDialog();
 
@@ -407,6 +410,7 @@ class HomeController extends GetxController {
   void sendLove() {
     if (!_checkInteractionCooldown()) return;
 
+    SoundHelper.playMagic();
     updateQuestProgress('interaction');
     _showInteractionDialog();
 
@@ -424,6 +428,7 @@ class HomeController extends GetxController {
   void notifyPartner() {
     if (!_checkInteractionCooldown()) return;
 
+    SoundHelper.playMagic();
     updateQuestProgress('interaction');
     Get.snackbar(
       '📢 Notif Terkirim!',
@@ -508,6 +513,7 @@ class HomeController extends GetxController {
     if (quest.isCompleted && !quest.isClaimed) {
       final index = dailyQuests.indexWhere((q) => q.id == quest.id);
       if (index != -1) {
+        SoundHelper.playCoins();
         dailyQuests[index].isClaimed = true;
         dailyQuests.refresh();
 

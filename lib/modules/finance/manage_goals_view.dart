@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/utils/sound_helper.dart';
 import '../../core/widgets/chunky_card.dart';
 import '../../data/models/savings_goal.dart';
 import 'create_goal_view.dart';
@@ -25,7 +26,10 @@ class ManageGoalsView extends GetView<FinanceController> {
               Icons.arrow_back_rounded,
               color: AppColors.textPrimary,
             ),
-            onPressed: () => Get.back(),
+            onPressed: () {
+              SoundHelper.playPop();
+              Get.back();
+            },
           ),
           title: Text('Kelola Target', style: AppTextStyles.title),
           centerTitle: true,
@@ -35,6 +39,7 @@ class ManageGoalsView extends GetView<FinanceController> {
             labelColor: AppColors.primary,
             unselectedLabelColor: AppColors.textSecondary,
             labelStyle: AppTextStyles.subtitle,
+            onTap: (_) => SoundHelper.playSwipe(),
             tabs: const [
               Tab(text: 'Aktif'),
               Tab(text: 'Riwayat'),
@@ -57,7 +62,10 @@ class ManageGoalsView extends GetView<FinanceController> {
   /// Chunky FAB - Rounded 3D Pink style like calendar
   Widget _buildChunkyFAB() {
     return GestureDetector(
-      onTap: () => Get.to(() => const CreateGoalView()),
+      onTap: () {
+        SoundHelper.playClick();
+        Get.to(() => const CreateGoalView());
+      },
       child: Container(
         width: 60,
         height: 60,
@@ -495,7 +503,10 @@ class ManageGoalsView extends GetView<FinanceController> {
                   // Cancel Button
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => Get.back(),
+                      onTap: () {
+                        SoundHelper.playPop();
+                        Get.back();
+                      },
                       child: Container(
                         height: 50,
                         decoration: BoxDecoration(
@@ -523,6 +534,7 @@ class ManageGoalsView extends GetView<FinanceController> {
                   Expanded(
                     child: GestureDetector(
                       onTap: () {
+                        SoundHelper.playTada();
                         Get.back();
                         controller.markAsCompleted(goal.id);
                       },
@@ -603,7 +615,10 @@ class ManageGoalsView extends GetView<FinanceController> {
                   // Cancel
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => Get.back(),
+                      onTap: () {
+                        SoundHelper.playPop();
+                        Get.back();
+                      },
                       child: Container(
                         height: 50,
                         decoration: BoxDecoration(

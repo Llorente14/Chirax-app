@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/utils/sound_helper.dart';
 import '../../core/widgets/chunky_card.dart';
 import '../../data/models/journey_event.dart';
 import 'journey_controller.dart';
@@ -77,6 +78,7 @@ class JourneyView extends GetView<JourneyController> {
         eventLoader: controller.getEventsForDay,
         onDaySelected: controller.onDaySelected,
         onPageChanged: (focusedDay) {
+          SoundHelper.playPop();
           controller.focusedDay.value = focusedDay;
         },
         headerStyle: HeaderStyle(
@@ -209,7 +211,10 @@ class JourneyView extends GetView<JourneyController> {
                 child: Dismissible(
                   key: Key(event.id),
                   direction: DismissDirection.endToStart,
-                  onDismissed: (_) => controller.deleteEvent(event),
+                  onDismissed: (_) {
+                    SoundHelper.playError();
+                    controller.deleteEvent(event);
+                  },
                   background: Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.only(right: 20),
