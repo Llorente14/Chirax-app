@@ -1,39 +1,87 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/badge_model.dart';
 import '../../data/services/auth_service.dart';
+import '../../data/services/database_service.dart';
 import '../home/home_controller.dart';
 import '../auth/login_view.dart';
 
 class ProfileController extends GetxController {
   final AuthService _authService = Get.find<AuthService>();
+  final DatabaseService _dbService = Get.find<DatabaseService>();
 
   // === SECURITY ===
   final isBiometricActive = false.obs;
   final isNotificationActive = true.obs;
 
+  // === REACTIVE PROFILE DATA ===
+  final rxName = ''.obs;
+  final rxUsername = ''.obs;
+  final rxBirthDate = Rxn<DateTime>();
+  final rxAvatar = 'DEFAULT'.obs; // 'DEFAULT', 'assets/...', or 'base64:...'
+  final isLoading = false.obs;
+
+  // === FORM CONTROLLERS ===
+  late TextEditingController nameController;
+  late TextEditingController usernameController;
+
+  @override
+  void onInit() {
+    super.onInit();
+    // Initialize from AuthService
+    _syncFromAuthService();
+
+    // Listen to userModel changes
+    ever(_authService.userModel, (_) => _syncFromAuthService());
+
+    // Initialize form controllers
+    nameController = TextEditingController(text: rxName.value);
+    usernameController = TextEditingController(text: rxUsername.value);
+
+    // Load badges
+    _loadBadges();
+
+    // Set up reactive listener after a short delay to ensure HomeController is ready
+    Future.delayed(const Duration(milliseconds: 500), () {
+      _setupReactiveBadges();
+    });
+  }
+
+  void _syncFromAuthService() {
+    final user = _authService.userModel.value;
+    if (user != null) {
+      rxName.value = user.name ?? 'User';
+      rxUsername.value = user.username ?? '';
+      rxBirthDate.value = user.birthday;
+      rxAvatar.value = user.avatar ?? 'DEFAULT';
+    }
+  }
+
   // === GETTERS FOR REAL DATA ===
 
-  /// User name from AuthService
-  String get name => _authService.userModel.value?.name ?? 'User';
+  /// User name from reactive
+  String get name => rxName.value.isNotEmpty ? rxName.value : 'User';
 
-  /// Username from AuthService
+  /// Username from reactive
   String get username {
-    final un = _authService.userModel.value?.username;
-    if (un == null || un.isEmpty) return '@user';
+    final un = rxUsername.value;
+    if (un.isEmpty) return '@user';
     return un.startsWith('@') ? un : '@$un';
   }
 
   /// Birth date formatted
   String get birthDate {
-    final birthday = _authService.userModel.value?.birthday;
+    final birthday = rxBirthDate.value;
     if (birthday == null) return 'Belum diatur';
     return _formatDate(birthday);
   }
 
-  /// Avatar asset
-  String get avatarAsset => 'assets/images/avatar_me.png';
+  /// Avatar value (for JuicyAvatar)
+  String get avatarAsset => rxAvatar.value;
 
   /// Format date to Indonesian format
   String _formatDate(DateTime date) {
@@ -71,20 +119,152 @@ class ProfileController extends GetxController {
     isNotificationActive.value = val;
   }
 
-  // === UPDATE PROFILE (via service in future) ===
-  void updateProfile({
-    String? newName,
-    String? newUsername,
-    String? newAvatar,
-    String? newBirthDate,
-  }) {
-    // For now, this would trigger an update to Firestore
-    // The UI will auto-refresh via stream
-    Get.snackbar(
-      '✅ Updated',
-      'Profile updated!',
-      snackPosition: SnackPosition.TOP,
-    );
+  // === UPDATE PROFILE (CRITICAL FIX) ===
+  Future<void> updateProfile({
+    required String name,
+    required String username,
+    required DateTime? birthDate,
+  }) async {
+    final uid = _authService.currentUser.value?.uid;
+    if (uid == null) return;
+
+    isLoading.value = true;
+
+    try {
+      // Update Firestore
+      final success = await _dbService.updateUserProfile(
+        uid: uid,
+        name: name,
+        username: username.replaceAll('@', ''),
+        birthday: birthDate ?? DateTime.now(),
+      );
+
+      if (success) {
+        // IMMEDIATE UPDATE: Update local reactive variables
+        rxName.value = name;
+        rxUsername.value = username.replaceAll('@', '');
+        rxBirthDate.value = birthDate;
+
+        // Update form controllers
+        nameController.text = name;
+        usernameController.text = username;
+
+        Get.snackbar(
+          '✅ Berhasil',
+          'Profil berhasil diperbarui!',
+          snackPosition: SnackPosition.TOP,
+        );
+        Get.back();
+      }
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // === AVATAR FUNCTIONS (3 OPTIONS) ===
+
+  /// Image Picker instance
+  final ImagePicker _picker = ImagePicker();
+
+  /// Option 1: Upload from Gallery
+  Future<void> uploadFromGallery() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 256, // Better resolution, still safe
+        maxHeight: 256,
+        imageQuality: 60, // Balanced quality
+      );
+
+      if (image == null) return;
+
+      isLoading.value = true;
+
+      // Read image bytes
+      final bytes = await File(image.path).readAsBytes();
+
+      // Check size (Firestore limit is ~1MB per field, aiming for <200KB)
+      if (bytes.length > 200000) {
+        // 200KB max
+        Get.snackbar(
+          '⚠️ Gambar Terlalu Besar',
+          'Pilih gambar dengan ukuran lebih kecil',
+          snackPosition: SnackPosition.TOP,
+        );
+        return;
+      }
+
+      // Convert to base64
+      final base64String = 'base64:${base64Encode(bytes)}';
+
+      // Save to Firestore
+      await _saveAvatarToFirestore(base64String);
+
+      // Update local state
+      rxAvatar.value = base64String;
+
+      Get.snackbar(
+        '✅ Avatar Updated',
+        'Foto profil berhasil diubah!',
+        snackPosition: SnackPosition.TOP,
+      );
+    } catch (e) {
+      final errorMsg = e.toString();
+      Get.snackbar(
+        'Error',
+        'Gagal upload foto: ${errorMsg.length > 80 ? errorMsg.substring(0, 80) : errorMsg}',
+      );
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// Option 2: Select Kaito Avatar (Asset)
+  Future<void> selectKaitoAvatar() async {
+    const assetPath = 'assets/images/avatar_me.png';
+
+    isLoading.value = true;
+    try {
+      await _saveAvatarToFirestore(assetPath);
+      rxAvatar.value = assetPath;
+
+      Get.snackbar(
+        '✅ Avatar Updated',
+        'Avatar Kaito dipilih!',
+        snackPosition: SnackPosition.TOP,
+      );
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// Option 3: Reset to Default
+  Future<void> resetToDefault() async {
+    isLoading.value = true;
+    try {
+      await _saveAvatarToFirestore('DEFAULT');
+      rxAvatar.value = 'DEFAULT';
+
+      Get.snackbar(
+        '✅ Avatar Reset',
+        'Avatar dikembalikan ke default!',
+        snackPosition: SnackPosition.TOP,
+      );
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// Helper: Save avatar string to Firestore
+  Future<void> _saveAvatarToFirestore(String avatarValue) async {
+    final uid = _authService.currentUser.value?.uid;
+    if (uid == null) return;
+
+    try {
+      await _dbService.usersCollection.doc(uid).update({'avatar': avatarValue});
+    } catch (e) {
+      Get.snackbar('Error', 'Gagal menyimpan avatar: $e');
+    }
   }
 
   // === GAMIFICATION GETTERS FROM HOMECONTROLLER ===
@@ -176,17 +356,6 @@ class ProfileController extends GetxController {
   // === BADGE SYSTEM ===
   final badges = <BadgeModel>[].obs;
   Worker? _coupleDataWorker;
-
-  @override
-  void onInit() {
-    super.onInit();
-    _loadBadges();
-
-    // Set up reactive listener after a short delay to ensure HomeController is ready
-    Future.delayed(const Duration(milliseconds: 500), () {
-      _setupReactiveBadges();
-    });
-  }
 
   @override
   void onClose() {

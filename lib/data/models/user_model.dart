@@ -7,6 +7,7 @@ class UserModel {
   final DateTime? birthday;
   final String? partnerId;
   final String? coupleId;
+  final String? avatar; // NEW: 'DEFAULT', 'assets/...', or 'base64:...'
   final DateTime createdAt;
 
   UserModel({
@@ -17,6 +18,7 @@ class UserModel {
     this.birthday,
     this.partnerId,
     this.coupleId,
+    this.avatar,
     required this.createdAt,
   });
 
@@ -38,6 +40,7 @@ class UserModel {
           : null,
       partnerId: map['partnerId'],
       coupleId: map['coupleId'],
+      avatar: map['avatar'],
       createdAt: map['createdAt'] != null
           ? DateTime.tryParse(map['createdAt']) ?? DateTime.now()
           : DateTime.now(),
@@ -53,6 +56,7 @@ class UserModel {
       'birthday': birthday?.toIso8601String(),
       'partnerId': partnerId,
       'coupleId': coupleId,
+      'avatar': avatar,
       'createdAt': createdAt.toIso8601String(),
     };
   }
@@ -64,6 +68,7 @@ class UserModel {
     DateTime? birthday,
     String? partnerId,
     String? coupleId,
+    String? avatar,
   }) {
     return UserModel(
       uid: uid,
@@ -73,6 +78,7 @@ class UserModel {
       birthday: birthday ?? this.birthday,
       partnerId: partnerId ?? this.partnerId,
       coupleId: coupleId ?? this.coupleId,
+      avatar: avatar ?? this.avatar,
       createdAt: createdAt,
     );
   }

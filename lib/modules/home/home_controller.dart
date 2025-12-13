@@ -56,8 +56,39 @@ class HomeController extends GetxController {
   /// Get partner ID
   String? get partnerId => _authService.userModel.value?.partnerId;
 
-  /// Get days together
+  /// Get days together (returns -1 if date not properly set)
   int get daysTogether => coupleData.value?.daysTogether ?? 0;
+
+  /// Check if anniversary date is properly set (not today/default)
+  bool get hasAnniversaryDateSet {
+    final startDate = coupleData.value?.startDate;
+    if (startDate == null) return false;
+    final now = DateTime.now();
+    // If startDate is same as today (within tolerance), consider it as "not set"
+    final diff = now.difference(startDate).inDays.abs();
+    // If startDate is in the future or very recent (same day), might be unset
+    return diff > 0 ||
+        startDate.isBefore(DateTime(now.year, now.month, now.day));
+  }
+
+  /// Get formatted anniversary date
+  DateTime? get anniversaryDate => coupleData.value?.startDate;
+
+  /// Update anniversary date
+  Future<bool> updateAnniversaryDate(DateTime newDate) async {
+    if (coupleId == null) return false;
+
+    final success = await _dbService.updateAnniversaryDate(coupleId!, newDate);
+    if (success) {
+      Get.snackbar(
+        '💕 Berhasil!',
+        'Tanggal jadian berhasil diubah',
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 2),
+      );
+    }
+    return success;
+  }
 
   /// Get streak count
   int get streakCount => coupleData.value?.streak ?? 0;

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../core/theme/app_colors.dart';
@@ -189,7 +190,8 @@ class ProfileView extends GetView<ProfileController> {
               borderRadius: BorderRadius.circular(30),
               child: Obx(() {
                 final avatar = controller.avatarAsset;
-                if (avatar == 'default') {
+                // Handle DEFAULT or empty
+                if (avatar == 'DEFAULT' || avatar.isEmpty) {
                   return Container(
                     color: AppColors.primary.withValues(alpha: 0.2),
                     child: const Center(
@@ -197,6 +199,20 @@ class ProfileView extends GetView<ProfileController> {
                     ),
                   );
                 }
+                // Handle base64
+                if (avatar.startsWith('base64:')) {
+                  return Image.memory(
+                    base64Decode(avatar.replaceFirst('base64:', '')),
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: AppColors.primary.withValues(alpha: 0.2),
+                      child: const Center(
+                        child: Text('👤', style: TextStyle(fontSize: 50)),
+                      ),
+                    ),
+                  );
+                }
+                // Handle asset path
                 return Image.asset(
                   avatar,
                   fit: BoxFit.cover,

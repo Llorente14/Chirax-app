@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:pinput/pinput.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -29,6 +30,9 @@ class _PairingViewState extends State<PairingView>
   bool _isConnecting = false;
   StreamSubscription? _userSubscription;
 
+  // NEW: Anniversary Date (default: today)
+  DateTime _anniversaryDate = DateTime.now();
+
   @override
   void initState() {
     super.initState();
@@ -54,8 +58,8 @@ class _PairingViewState extends State<PairingView>
 
       if (uid == null) return;
 
-      // Generate code
-      final code = await dbService.createPairingCode(uid);
+      // Generate code with anniversary date
+      final code = await dbService.createPairingCode(uid, _anniversaryDate);
       if (code != null) {
         setState(() => _generatedCode = code);
 
@@ -201,7 +205,7 @@ class _PairingViewState extends State<PairingView>
       child: Column(
         children: [
           if (_generatedCode == null) ...[
-            // Generate button
+            // Explanation text
             Text(
               'Buat kode unik dan bagikan\nke pasanganmu',
               style: AppTextStyles.body.copyWith(
@@ -210,6 +214,117 @@ class _PairingViewState extends State<PairingView>
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
+
+            // NEW: Anniversary Date Picker
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '💕 Kapan kalian jadian?',
+                  style: AppTextStyles.subtitle.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                GestureDetector(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: _anniversaryDate,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime.now(),
+                      helpText: 'Pilih Tanggal Jadian',
+                      cancelText: 'Batal',
+                      confirmText: 'Pilih',
+                      builder: (context, child) {
+                        return Theme(
+                          data: Theme.of(context).copyWith(
+                            colorScheme: ColorScheme.light(
+                              primary: AppColors.primary,
+                              onPrimary: Colors.white,
+                              surface: Colors.white,
+                              onSurface: AppColors.textPrimary,
+                            ),
+                          ),
+                          child: child!,
+                        );
+                      },
+                    );
+                    if (picked != null) {
+                      setState(() => _anniversaryDate = picked);
+                    }
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 18,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.primary, width: 3),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primaryShadow,
+                          offset: const Offset(0, 4),
+                          blurRadius: 0,
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.calendar_month_rounded,
+                            color: AppColors.primary,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Tanggal Jadian',
+                                style: AppTextStyles.bodySmall.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                DateFormat(
+                                  'dd MMM yyyy',
+                                ).format(_anniversaryDate),
+                                style: AppTextStyles.subtitle.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          Icons.arrow_drop_down_rounded,
+                          color: AppColors.primary,
+                          size: 32,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
+
+            // Generate Button
             _isGenerating
                 ? const JuicyLoading(size: 60)
                 : ChunkyButton(

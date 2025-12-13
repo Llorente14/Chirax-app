@@ -82,8 +82,11 @@ class DatabaseService extends GetxService {
     return List.generate(6, (_) => chars[random.nextInt(chars.length)]).join();
   }
 
-  /// Create pairing code for user
-  Future<String?> createPairingCode(String creatorUid) async {
+  /// Create pairing code for user with anniversary date
+  Future<String?> createPairingCode(
+    String creatorUid,
+    DateTime anniversaryDate,
+  ) async {
     try {
       // Generate unique code
       String code = _generatePairingCode();
@@ -97,10 +100,11 @@ class DatabaseService extends GetxService {
         attempts++;
       }
 
-      // Save code
+      // Save code with anniversary date
       await pairingCodesCollection.doc(code).set({
         'creatorUid': creatorUid,
         'createdAt': DateTime.now().toIso8601String(),
+        'anniversaryDate': Timestamp.fromDate(anniversaryDate),
       });
 
       return code;
@@ -154,6 +158,11 @@ class DatabaseService extends GetxService {
         final codeData = codeDoc.data() as Map<String, dynamic>;
         final creatorUid = codeData['creatorUid'] as String?;
 
+        // NEW: Get anniversary date from pairing code
+        final anniversaryTimestamp = codeData['anniversaryDate'] as Timestamp?;
+        final anniversaryDate =
+            anniversaryTimestamp?.toDate() ?? DateTime.now();
+
         if (creatorUid == null) {
           throw Exception('Kode tidak valid');
         }
@@ -171,7 +180,8 @@ class DatabaseService extends GetxService {
           'user1': creatorUid,
           'user2': myUid,
           'createdAt': FieldValue.serverTimestamp(),
-          'startDate': FieldValue.serverTimestamp(),
+          // NEW: Use anniversary date from pairing code as startDate
+          'startDate': Timestamp.fromDate(anniversaryDate),
           'streak': 0,
           'lastCheckIn': null,
           'totalXP': 0,
@@ -186,6 +196,8 @@ class DatabaseService extends GetxService {
           'lastQuestResetDate': DateTime.now().toIso8601String(),
           // NEW: Weekly Challenge (will be set by initWeeklyChallenge)
           'weeklyChallenge': null,
+          // NEW: Badge Progress
+          'badgeProgress': {},
         });
 
         // 3. Update both users to link to couple
@@ -206,6 +218,19 @@ class DatabaseService extends GetxService {
       });
     } catch (e) {
       Get.snackbar('Error', e.toString().replaceAll('Exception: ', ''));
+      return false;
+    }
+  }
+
+  /// Update anniversary/start date for a couple
+  Future<bool> updateAnniversaryDate(String coupleId, DateTime newDate) async {
+    try {
+      await couplesCollection.doc(coupleId).update({
+        'startDate': Timestamp.fromDate(newDate),
+      });
+      return true;
+    } catch (e) {
+      Get.snackbar('Error', 'Gagal mengubah tanggal: $e');
       return false;
     }
   }

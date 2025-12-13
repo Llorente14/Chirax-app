@@ -34,7 +34,7 @@ class CreateGoalView extends GetView<FinanceController> {
       '🎮',
     ];
 
-    // Color Options
+    // Color Options - 8 warna untuk grid 2x4
     final colors = [
       AppColors.primary,
       AppColors.secondary,
@@ -42,6 +42,8 @@ class CreateGoalView extends GetView<FinanceController> {
       AppColors.moneyPurple,
       AppColors.moneyOrange,
       AppColors.moneyPink,
+      const Color(0xFFE74C3C), // Red
+      const Color(0xFF6B7280), // Grey
     ];
 
     return Scaffold(
@@ -237,20 +239,25 @@ class CreateGoalView extends GetView<FinanceController> {
 
             const SizedBox(height: 24),
 
-            // === PILIH WARNA ===
+            // === PILIH WARNA === (Grid 2x4)
             Text('Pilih Warna', style: AppTextStyles.subtitle),
             const SizedBox(height: 12),
             Obx(
-              () => Row(
+              () => GridView.count(
+                crossAxisCount: 4,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                shrinkWrap: true,
+                childAspectRatio: 1,
+                physics: const NeverScrollableScrollPhysics(),
                 children: colors.map((color) {
                   final isSelected = selectedColor.value == color;
                   return GestureDetector(
                     onTap: () => selectedColor.value = color,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      margin: const EdgeInsets.only(right: 12),
-                      width: 48,
-                      height: 48,
+                      width: 40,
+                      height: 40,
                       decoration: BoxDecoration(
                         color: color,
                         shape: BoxShape.circle,
@@ -272,7 +279,7 @@ class CreateGoalView extends GetView<FinanceController> {
                           ? const Icon(
                               Icons.check_rounded,
                               color: Colors.white,
-                              size: 24,
+                              size: 18,
                             )
                           : null,
                     ),

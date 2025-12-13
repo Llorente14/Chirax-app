@@ -264,11 +264,11 @@ class JourneyController extends GetxController {
 
             const SizedBox(height: 20),
 
-            // Category Selection
+            // Category Selection - Wrap Style
             Obx(
               () => Wrap(
-                spacing: 12,
-                runSpacing: 12,
+                spacing: 10,
+                runSpacing: 10,
                 children: List.generate(EventCategory.categories.length, (i) {
                   final cat = EventCategory.categories[i];
                   final isSelected = selectedCategoryIndex.value == i;
@@ -276,14 +276,14 @@ class JourneyController extends GetxController {
                     onTap: () => selectedCategoryIndex.value = i,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                        horizontal: 14,
+                        vertical: 10,
                       ),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? cat.color.withValues(alpha: 0.2)
+                            ? cat.color.withValues(alpha: 0.15)
                             : Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: isSelected ? cat.color : Colors.grey.shade300,
                           width: 2,
@@ -292,12 +292,13 @@ class JourneyController extends GetxController {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(cat.icon, style: const TextStyle(fontSize: 16)),
+                          Text(cat.icon, style: const TextStyle(fontSize: 14)),
                           const SizedBox(width: 6),
                           Text(
                             cat.label,
                             style: AppTextStyles.bodySmall.copyWith(
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
                               color: isSelected
                                   ? cat.color
                                   : AppColors.textSecondary,

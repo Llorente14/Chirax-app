@@ -211,6 +211,18 @@ class EventCategory {
       color: Color(0xFF1899D6),
     ),
     EventCategory(
+      id: 'movie',
+      label: 'Movie Date',
+      icon: '🎬',
+      color: Color(0xFF9B59B6),
+    ),
+    EventCategory(
+      id: 'food',
+      label: 'Makan-makan',
+      icon: '🍔',
+      color: Color(0xFFE67E22),
+    ),
+    EventCategory(
       id: 'other',
       label: 'Other',
       icon: '📌',

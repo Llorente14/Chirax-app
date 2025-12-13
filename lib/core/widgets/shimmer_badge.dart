@@ -40,6 +40,17 @@ class _ShimmerBadgeState extends State<ShimmerBadge>
     super.dispose();
   }
 
+  /// Format days display text
+  String _formatDays(int days) {
+    if (days <= 0) {
+      return '1st Day 💕';
+    } else if (days == 1) {
+      return '1 Day';
+    } else {
+      return '$days Days';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -81,7 +92,7 @@ class _ShimmerBadgeState extends State<ShimmerBadge>
               const Icon(Icons.favorite, color: Colors.white, size: 20),
               const SizedBox(width: 8),
               Text(
-                '${widget.days} Days',
+                _formatDays(widget.days),
                 style: AppTextStyles.button.copyWith(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../core/theme/app_colors.dart';
@@ -9,19 +10,10 @@ class EditProfileView extends GetView<ProfileController> {
 
   @override
   Widget build(BuildContext context) {
-    // Controllers
+    // Initialize controllers with current values
     final nameController = TextEditingController(text: controller.name);
     final usernameController = TextEditingController(text: controller.username);
-    final birthDateController = TextEditingController(
-      text: controller.birthDate,
-    );
-    final selectedAvatar = controller.avatarAsset.obs;
-
-    // Avatar options
-    final avatarOptions = [
-      'assets/images/avatar_me.png',
-      'assets/images/avatar_partner.png',
-    ];
+    final selectedBirthDate = Rxn<DateTime>(controller.rxBirthDate.value);
 
     return Scaffold(
       backgroundColor: AppColors.offWhite,
@@ -43,50 +35,10 @@ class EditProfileView extends GetView<ProfileController> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // === AVATAR SELECTOR ===
+            // === AVATAR SELECTOR (3 OPTIONS) ===
             Text('Pilih Avatar', style: AppTextStyles.subtitle),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 120,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: avatarOptions.length + 1, // +1 for default
-                itemBuilder: (context, index) {
-                  if (index == avatarOptions.length) {
-                    // Default emoji avatar
-                    return _buildAvatarOption(
-                      isSelected: selectedAvatar.value == 'default',
-                      onTap: () => selectedAvatar.value = 'default',
-                      child: Container(
-                        color: AppColors.primary.withValues(alpha: 0.2),
-                        child: const Center(
-                          child: Text('👤', style: TextStyle(fontSize: 40)),
-                        ),
-                      ),
-                    );
-                  }
-                  final avatar = avatarOptions[index];
-                  return Obx(
-                    () => _buildAvatarOption(
-                      isSelected: selectedAvatar.value == avatar,
-                      onTap: () => selectedAvatar.value = avatar,
-                      child: Image.asset(
-                        avatar,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          color: Colors.grey.shade200,
-                          child: Icon(
-                            Icons.person,
-                            size: 40,
-                            color: Colors.grey.shade400,
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
+            const SizedBox(height: 16),
+            Obx(() => _buildAvatarSelector()),
 
             const SizedBox(height: 28),
 
@@ -115,55 +67,78 @@ class EditProfileView extends GetView<ProfileController> {
             // === TANGGAL LAHIR ===
             Text('Tanggal Lahir', style: AppTextStyles.subtitle),
             const SizedBox(height: 8),
-            _buildChunkyInput(
-              controller: birthDateController,
-              hintText: '07 Agustus 2003',
-              prefixIcon: Icons.cake_rounded,
+            Obx(
+              () => _buildDatePicker(
+                context: context,
+                selectedDate: selectedBirthDate,
+              ),
             ),
 
             const SizedBox(height: 40),
 
             // === SIMPAN BUTTON ===
-            GestureDetector(
-              onTap: () {
-                controller.updateProfile(
-                  newName: nameController.text,
-                  newUsername: usernameController.text,
-                  newAvatar: selectedAvatar.value,
-                  newBirthDate: birthDateController.text,
-                );
-                Get.back();
-                Get.snackbar(
-                  '✅ Berhasil',
-                  'Profil berhasil diperbarui!',
-                  snackPosition: SnackPosition.TOP,
-                );
-              },
-              child: Container(
-                width: double.infinity,
-                height: 58,
-                decoration: BoxDecoration(
-                  color: AppColors.success,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.successShadow,
-                      offset: const Offset(0, 5),
-                      blurRadius: 0,
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.save_rounded,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                    const SizedBox(width: 8),
-                    Text('SIMPAN PERUBAHAN', style: AppTextStyles.button),
-                  ],
+            Obx(
+              () => GestureDetector(
+                onTap: controller.isLoading.value
+                    ? null
+                    : () async {
+                        // Parse birthDate
+                        final birthDate = selectedBirthDate.value;
+
+                        await controller.updateProfile(
+                          name: nameController.text.trim(),
+                          username: usernameController.text.trim(),
+                          birthDate: birthDate,
+                        );
+                      },
+                child: Container(
+                  width: double.infinity,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    color: controller.isLoading.value
+                        ? Colors.grey.shade300
+                        : AppColors.success,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: controller.isLoading.value
+                            ? Colors.grey.shade400
+                            : AppColors.successShadow,
+                        offset: const Offset(0, 5),
+                        blurRadius: 0,
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: controller.isLoading.value
+                        ? [
+                            const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 3,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text('MENYIMPAN...', style: AppTextStyles.button),
+                          ]
+                        : [
+                            const Icon(
+                              Icons.save_rounded,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'SIMPAN PERUBAHAN',
+                              style: AppTextStyles.button,
+                            ),
+                          ],
+                  ),
                 ),
               ),
             ),
@@ -175,68 +150,241 @@ class EditProfileView extends GetView<ProfileController> {
     );
   }
 
+  /// Avatar Selector - 3 Options: Upload, Kaito, Default
+  Widget _buildAvatarSelector() {
+    final currentAvatar = controller.rxAvatar.value;
+    final isBase64 = currentAvatar.startsWith('base64:');
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        // Option 1: Upload from Gallery (shows preview if uploaded)
+        _buildAvatarOption(
+          customChild: isBase64
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(35),
+                  child: Image.memory(
+                    base64Decode(currentAvatar.replaceFirst('base64:', '')),
+                    width: 70,
+                    height: 70,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      width: 70,
+                      height: 70,
+                      color: AppColors.primary,
+                      child: const Icon(
+                        Icons.camera_alt_rounded,
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                    ),
+                  ),
+                )
+              : null,
+          icon: isBase64 ? null : Icons.camera_alt_rounded,
+          label: 'Upload',
+          backgroundColor: AppColors.primary,
+          iconColor: Colors.white,
+          isSelected: isBase64,
+          onTap: () => controller.uploadFromGallery(),
+        ),
+
+        // Option 2: Kaito Avatar
+        _buildAvatarOption(
+          customChild: ClipRRect(
+            borderRadius: BorderRadius.circular(35),
+            child: Image.asset(
+              'assets/images/avatar_me.png',
+              width: 70,
+              height: 70,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                width: 70,
+                height: 70,
+                color: Colors.grey.shade200,
+                child: const Icon(Icons.person, size: 32),
+              ),
+            ),
+          ),
+          label: 'Kaito',
+          isSelected: currentAvatar.startsWith('assets'),
+          onTap: () => controller.selectKaitoAvatar(),
+        ),
+
+        // Option 3: Default
+        _buildAvatarOption(
+          icon: Icons.person_rounded,
+          label: 'Default',
+          backgroundColor: Colors.grey.shade300,
+          iconColor: Colors.grey.shade600,
+          isSelected: currentAvatar == 'DEFAULT',
+          onTap: () => controller.resetToDefault(),
+        ),
+      ],
+    );
+  }
+
   Widget _buildAvatarOption({
+    IconData? icon,
+    Widget? customChild,
+    required String label,
+    Color? backgroundColor,
+    Color? iconColor,
     required bool isSelected,
     required VoidCallback onTap,
-    required Widget child,
   }) {
     return GestureDetector(
       onTap: onTap,
+      child: Column(
+        children: [
+          Stack(
+            children: [
+              // Shadow
+              Container(
+                margin: const EdgeInsets.only(top: 5),
+                width: 78,
+                height: 78,
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.success : Colors.grey.shade400,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              // Avatar Container
+              Container(
+                width: 78,
+                height: 78,
+                decoration: BoxDecoration(
+                  color: backgroundColor ?? Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.success
+                        : Colors.grey.shade300,
+                    width: isSelected ? 4 : 2,
+                  ),
+                ),
+                child:
+                    customChild ??
+                    Center(child: Icon(icon, size: 32, color: iconColor)),
+              ),
+              // Check mark
+              if (isSelected)
+                Positioned(
+                  right: 0,
+                  bottom: 5,
+                  child: Container(
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      color: AppColors.success,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: const Icon(
+                      Icons.check_rounded,
+                      color: Colors.white,
+                      size: 14,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: AppTextStyles.bodySmall.copyWith(
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              color: isSelected ? AppColors.success : AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDatePicker({
+    required BuildContext context,
+    required Rxn<DateTime> selectedDate,
+  }) {
+    return GestureDetector(
+      onTap: () async {
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: selectedDate.value ?? DateTime(2000, 1, 1),
+          firstDate: DateTime(1950),
+          lastDate: DateTime.now(),
+          helpText: 'Pilih Tanggal Lahir',
+          cancelText: 'Batal',
+          confirmText: 'Pilih',
+          builder: (context, child) {
+            return Theme(
+              data: Theme.of(context).copyWith(
+                colorScheme: ColorScheme.light(
+                  primary: AppColors.primary,
+                  onPrimary: Colors.white,
+                  surface: Colors.white,
+                  onSurface: AppColors.textPrimary,
+                ),
+              ),
+              child: child!,
+            );
+          },
+        );
+        if (picked != null) {
+          selectedDate.value = picked;
+        }
+      },
       child: Container(
-        margin: const EdgeInsets.only(right: 16),
-        child: Stack(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.grey.shade300, width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.shade300,
+              offset: const Offset(0, 4),
+              blurRadius: 0,
+            ),
+          ],
+        ),
+        child: Row(
           children: [
-            // Shadow
-            Container(
-              margin: const EdgeInsets.only(top: 6),
-              width: 90,
-              height: 90,
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : Colors.grey.shade400,
-                borderRadius: BorderRadius.circular(24),
+            Icon(Icons.cake_rounded, color: AppColors.primary),
+            const SizedBox(width: 12),
+            Text(
+              selectedDate.value != null
+                  ? _formatDate(selectedDate.value!)
+                  : 'Pilih tanggal lahir',
+              style: AppTextStyles.body.copyWith(
+                color: selectedDate.value != null
+                    ? AppColors.textPrimary
+                    : Colors.grey.shade400,
               ),
             ),
-            // Avatar Container
-            Container(
-              width: 90,
-              height: 90,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: isSelected ? AppColors.primary : Colors.grey.shade300,
-                  width: isSelected ? 4 : 2,
-                ),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(isSelected ? 19 : 21),
-                child: child,
-              ),
-            ),
-            // Check mark
-            if (isSelected)
-              Positioned(
-                right: 0,
-                bottom: 6,
-                child: Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: AppColors.success,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                  child: const Icon(
-                    Icons.check_rounded,
-                    color: Colors.white,
-                    size: 16,
-                  ),
-                ),
-              ),
           ],
         ),
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    const months = [
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
   Widget _buildChunkyInput({

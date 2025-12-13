@@ -97,8 +97,12 @@ class HomeView extends GetView<HomeController> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Days Together Badge with Shimmer Effect
-              Obx(() => ShimmerBadge(days: controller.daysTogether)),
+              // Days Together Badge - Conditional display
+              Obx(
+                () => controller.hasAnniversaryDateSet
+                    ? ShimmerBadge(days: controller.daysTogether)
+                    : _buildSetDateBadge(),
+              ),
 
               // Partner Avatar (JuicyAvatar style - Squircle 3D)
               GestureDetector(
@@ -187,6 +191,75 @@ class HomeView extends GetView<HomeController> {
         ],
       ),
     );
+  }
+
+  /// Set Date Badge - shown when anniversary date not set
+  Widget _buildSetDateBadge() {
+    return GestureDetector(
+      onTap: () => _showSetDatePicker(),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade400,
+          borderRadius: BorderRadius.circular(50),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.shade500,
+              offset: const Offset(0, 4),
+              blurRadius: 0,
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.calendar_month_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Set Date 📅',
+              style: AppTextStyles.button.copyWith(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Show date picker for setting anniversary date
+  Future<void> _showSetDatePicker() async {
+    final picked = await showDatePicker(
+      context: Get.context!,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+      helpText: 'Kapan kalian jadian?',
+      cancelText: 'Batal',
+      confirmText: 'Pilih',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: AppColors.textPrimary,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      await controller.updateAnniversaryDate(picked);
+    }
   }
 
   /// Partner Bottom Sheet
