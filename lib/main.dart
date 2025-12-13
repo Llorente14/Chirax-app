@@ -6,6 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'core/theme/app_colors.dart';
 import 'data/services/auth_service.dart';
 import 'data/services/database_service.dart';
+import 'data/services/notification_service.dart';
 import 'modules/auth/login_view.dart';
 import 'modules/auth/pairing_view.dart';
 import 'modules/auth/setup_profile_view.dart';
@@ -21,6 +22,9 @@ void main() async {
 
   // Initialize date formatting
   await initializeDateFormatting('id', null);
+
+  // Initialize notification service
+  await NotificationService.init();
 
   // Initialize services
   Get.put(AuthService());

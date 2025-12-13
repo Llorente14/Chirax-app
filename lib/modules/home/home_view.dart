@@ -1107,8 +1107,90 @@ class HomeView extends GetView<HomeController> {
               textAlign: TextAlign.center,
             ),
           ),
+
+          const SizedBox(height: 24),
+
+          // === PET INTERACTION BUTTONS ===
+          Obx(
+            () => Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Feed Button (Makan)
+                _buildCircularInteractionButton(
+                  icon: Icons.restaurant_rounded,
+                  label: 'Makan',
+                  color: AppColors.moneyOrange,
+                  shadowColor: const Color(0xFFCC6600),
+                  onTap: controller.isInteracting.value
+                      ? null
+                      : controller.feedPet,
+                  isDisabled: controller.isInteracting.value,
+                ),
+
+                const SizedBox(width: 24),
+
+                // Pat-pat Button (Elus)
+                _buildCircularInteractionButton(
+                  icon: Icons.favorite_rounded,
+                  label: 'Elus',
+                  color: AppColors.primary,
+                  shadowColor: AppColors.primaryShadow,
+                  onTap: controller.isInteracting.value
+                      ? null
+                      : controller.patPet,
+                  isDisabled: controller.isInteracting.value,
+                ),
+              ],
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  /// Circular Interaction Button for Pet
+  Widget _buildCircularInteractionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required Color shadowColor,
+    required VoidCallback? onTap,
+    bool isDisabled = false,
+  }) {
+    final displayColor = isDisabled ? Colors.grey.shade400 : color;
+    final displayShadow = isDisabled ? Colors.grey.shade500 : shadowColor;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: displayColor,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: displayShadow,
+                  offset: const Offset(0, 5),
+                  blurRadius: 0,
+                ),
+              ],
+            ),
+            child: Icon(icon, color: Colors.white, size: 28),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: AppTextStyles.bodySmall.copyWith(
+            color: isDisabled ? Colors.grey : AppColors.textSecondary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 
@@ -1164,6 +1246,8 @@ class HomeView extends GetView<HomeController> {
         return AppColors.secondary;
       case PetMood.eating:
         return AppColors.moneyOrange;
+      case PetMood.happy:
+        return AppColors.primary;
     }
   }
 
@@ -1176,6 +1260,8 @@ class HomeView extends GetView<HomeController> {
         return 'Pet kamu butuh perhatian... 💔';
       case PetMood.eating:
         return 'Nyam nyam! Sedang makan... 🍖';
+      case PetMood.happy:
+        return 'Yeay! ${controller.petName} senang banget! 💕';
     }
   }
 

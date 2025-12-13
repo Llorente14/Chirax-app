@@ -320,6 +320,12 @@ class HomeController extends GetxController {
 
   // === ACTIONS ===
 
+  // === PET INTERACTION STATE ===
+  final RxBool isInteracting = false.obs;
+  int _feedCount = 0;
+  bool _isFeedCoolingDown = false;
+  Timer? _feedResetTimer;
+
   /// Perform daily check-in
   Future<void> checkIn() async {
     if (coupleId == null) return;
@@ -327,17 +333,130 @@ class HomeController extends GetxController {
     SoundHelper.playIgnite();
   }
 
-  /// Feed the pet
+  /// Feed the pet (enhanced with cooldown)
   Future<void> feedPet() async {
     if (coupleId == null) return;
 
-    if (petMood != PetMood.sad) {
-      Get.snackbar('Info', '${petName} tidak lapar 😊');
+    // Check if already interacting
+    if (isInteracting.value) return;
+
+    // Check cooldown
+    if (_isFeedCoolingDown) {
+      Get.snackbar(
+        '⏰ Sabar ya...',
+        '$petName masih kunyah-kunyah',
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 2),
+      );
       return;
     }
 
-    await _dbService.feedPet(coupleId!);
-    Get.snackbar('🍔 Nyam!', '${petName} sedang makan...');
+    // Check feed count (max 2 per minute)
+    if (_feedCount >= 2) {
+      Get.snackbar(
+        '🤭 Kenyang!',
+        '$petName sudah kenyang! Tunggu sebentar ya.',
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 2),
+      );
+      return;
+    }
+
+    // Start interaction
+    isInteracting.value = true;
+    _isFeedCoolingDown = true;
+    _feedCount++;
+
+    // Play sound and update mood
+    SoundHelper.playCoins();
+    await _dbService.updatePetMood(coupleId!, 'eating');
+
+    Get.snackbar(
+      '🍔 Nyam nyam!',
+      '$petName sedang makan...',
+      snackPosition: SnackPosition.TOP,
+      duration: const Duration(seconds: 2),
+    );
+
+    // Start reset timer if first feed
+    if (_feedCount == 1) {
+      _feedResetTimer?.cancel();
+      _feedResetTimer = Timer(const Duration(minutes: 1), () {
+        _feedCount = 0;
+      });
+    }
+
+    // Revert mood after 2 seconds
+    Future.delayed(const Duration(seconds: 2), () {
+      if (coupleId != null) {
+        _dbService.updatePetMood(coupleId!, 'idle');
+      }
+      isInteracting.value = false;
+    });
+
+    // Cooldown for 5 seconds
+    Future.delayed(const Duration(seconds: 5), () {
+      _isFeedCoolingDown = false;
+    });
+  }
+
+  /// Pat-pat the pet (elus)
+  Future<void> patPet() async {
+    if (coupleId == null) return;
+
+    // Check if already interacting
+    if (isInteracting.value) return;
+
+    isInteracting.value = true;
+
+    // Play magic sound
+    SoundHelper.playMagic();
+
+    // Update mood to happy
+    await _dbService.updatePetMood(coupleId!, 'happy');
+
+    // Show heart effect dialog
+    _showHeartEffect();
+
+    Get.snackbar(
+      '💕 Aaww!',
+      '$petName suka dielus!',
+      snackPosition: SnackPosition.TOP,
+      duration: const Duration(seconds: 2),
+    );
+
+    // Revert mood after 2 seconds
+    Future.delayed(const Duration(seconds: 2), () {
+      if (coupleId != null) {
+        _dbService.updatePetMood(coupleId!, 'idle');
+      }
+      isInteracting.value = false;
+    });
+  }
+
+  /// Show floating hearts effect
+  void _showHeartEffect() {
+    Get.dialog(
+      Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: Center(
+          child: Lottie.asset(
+            'assets/lottie/love_hearts.json',
+            width: 200,
+            height: 200,
+            repeat: false,
+            onLoaded: (composition) {
+              Future.delayed(composition.duration, () {
+                if (Get.isDialogOpen ?? false) Get.back();
+              });
+            },
+          ),
+        ),
+      ),
+      barrierColor: Colors.transparent,
+      barrierDismissible: false,
+    );
   }
 
   /// Show interaction dialog with Lottie

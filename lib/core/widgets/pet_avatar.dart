@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Pet Mood Enum untuk visual state
-enum PetMood { idle, sad, eating }
+enum PetMood { idle, sad, eating, happy }
 
 /// Extension untuk mendapatkan label dan path berdasarkan mood
 extension PetMoodExtension on PetMood {
@@ -13,6 +13,8 @@ extension PetMoodExtension on PetMood {
         return 'Needs Love';
       case PetMood.eating:
         return 'Makan';
+      case PetMood.happy:
+        return 'Senang';
     }
   }
 
@@ -24,11 +26,13 @@ extension PetMoodExtension on PetMood {
         return 'assets/images/pet/pet_sad.png';
       case PetMood.eating:
         return 'assets/images/pet/pet_eating.png';
+      case PetMood.happy:
+        return 'assets/images/pet/pet_happy.png';
     }
   }
 
   /// Whether this mood should have breathing animation
-  bool get shouldBreathe => this == PetMood.idle;
+  bool get shouldBreathe => this == PetMood.idle || this == PetMood.happy;
 }
 
 /// Pet Avatar Widget dengan PNG dan breathing animation
@@ -124,6 +128,9 @@ class _PetAvatarState extends State<PetAvatar>
         break;
       case PetMood.eating:
         emoji = '😻';
+        break;
+      case PetMood.happy:
+        emoji = '😸';
         break;
     }
     return Center(

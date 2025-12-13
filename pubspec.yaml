@@ -63,6 +63,10 @@ dependencies:
   # Audio player for SFX
   audioplayers: ^6.1.0
 
+  # Local Notifications
+  flutter_local_notifications: ^19.0.0
+  timezone: ^0.10.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

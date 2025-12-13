@@ -5,6 +5,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/utils/sound_helper.dart';
 import '../../data/services/auth_service.dart';
+import '../../data/services/notification_service.dart';
 import '../dashboard/dashboard_view.dart';
 import 'login_view.dart';
 import 'pairing_view.dart';
@@ -84,6 +85,8 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
           Get.offAll(() => const PairingView());
           break;
         case 'dashboard':
+          // Request notification permissions and schedule if enabled
+          NotificationService.requestPermissions();
           Get.offAll(() => const DashboardView());
           break;
         default:

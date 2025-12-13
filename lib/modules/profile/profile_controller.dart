@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../data/models/badge_model.dart';
 import '../../data/services/auth_service.dart';
 import '../../data/services/database_service.dart';
+import '../../data/services/notification_service.dart';
 import '../home/home_controller.dart';
 import '../auth/login_view.dart';
 
@@ -118,6 +119,15 @@ class ProfileController extends GetxController {
 
   void toggleNotification(bool val) {
     isNotificationActive.value = val;
+    if (val) {
+      // User enabled notifications - schedule daily reminder
+      NotificationService.requestPermissions().then((_) {
+        NotificationService.scheduleDailyReminder();
+      });
+    } else {
+      // User disabled notifications - cancel all
+      NotificationService.cancelAll();
+    }
   }
 
   void toggleSound(bool val) {
