@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/utils/icon_helper.dart';
 import '../../core/utils/sound_helper.dart';
 import '../../core/widgets/bouncy_widgets.dart';
 import '../../core/widgets/juicy_confirmation_dialog.dart';
@@ -64,7 +66,7 @@ class SettingsView extends GetView<ProfileController> {
             const SizedBox(height: 12),
             _buildSettingsGroup([
               _buildSettingToggle(
-                icon: Icons.volume_up_rounded,
+                icon: AppIcons.sound,
                 iconColor: AppColors.primary,
                 title: 'Efek Suara',
                 subtitle: 'Putar suara saat interaksi',
@@ -73,7 +75,7 @@ class SettingsView extends GetView<ProfileController> {
               ),
               Divider(height: 1, color: Colors.grey.shade200),
               _buildSettingToggle(
-                icon: Icons.notifications_rounded,
+                icon: AppIcons.notification,
                 iconColor: AppColors.secondary,
                 title: 'Notifikasi',
                 subtitle: 'Ingatkan check-in harian',
@@ -89,7 +91,7 @@ class SettingsView extends GetView<ProfileController> {
             const SizedBox(height: 12),
             _buildSettingsGroup([
               _buildSettingToggle(
-                icon: Icons.fingerprint_rounded,
+                icon: AppIcons.fingerprint,
                 iconColor: AppColors.success,
                 title: 'Kunci Aplikasi',
                 subtitle: 'Gunakan Face ID / Fingerprint',
@@ -175,7 +177,7 @@ class SettingsView extends GetView<ProfileController> {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(
-                Icons.favorite_rounded,
+                PhosphorIconsFill.heart,
                 color: AppColors.primary,
                 size: 22,
               ),
@@ -209,8 +211,8 @@ class SettingsView extends GetView<ProfileController> {
                 color: Colors.grey.shade100,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(
-                Icons.edit_rounded,
+              child: const PhosphorIcon(
+                PhosphorIconsFill.pencilSimple,
                 color: AppColors.textSecondary,
                 size: 18,
               ),
@@ -257,7 +259,7 @@ class SettingsView extends GetView<ProfileController> {
         title: 'Ubah Tanggal Jadian?',
         content:
             'Hitungan hari bersama kalian akan berubah berdasarkan tanggal baru ini.',
-        icon: Icons.calendar_month_rounded,
+        icon: PhosphorIconsFill.calendarBlank,
         themeColor: AppColors.primary,
         confirmText: 'Ya, Ubah',
         cancelText: 'Batal',
@@ -288,7 +290,7 @@ class SettingsView extends GetView<ProfileController> {
               color: iconColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: iconColor, size: 22),
+            child: PhosphorIcon(icon, color: iconColor, size: 22),
           ),
           const SizedBox(width: 14),
           // Title & Subtitle
@@ -337,7 +339,11 @@ class SettingsView extends GetView<ProfileController> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.logout_rounded, color: AppColors.dangerRed, size: 22),
+            Icon(
+              PhosphorIconsFill.signOut,
+              color: AppColors.dangerRed,
+              size: 22,
+            ),
             const SizedBox(width: 8),
             Text(
               'KELUAR',

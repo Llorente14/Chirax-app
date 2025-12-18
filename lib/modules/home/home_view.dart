@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/utils/sound_helper.dart';
 import '../../core/widgets/chunky_button.dart';
 import '../../core/widgets/chunky_card.dart';
-import '../../core/widgets/pet_avatar.dart';
 import '../../core/widgets/shimmer_badge.dart';
-import '../../core/widgets/streak_fire.dart';
 import '../../data/models/journey_event.dart';
 import '../../data/models/quest_model.dart';
 import '../../data/services/database_service.dart';
 import '../journey/journey_controller.dart';
 import 'home_controller.dart';
+import '../../core/widgets/pet_avatar.dart';
+import '../../core/widgets/streak_fire.dart';
 
 class HomeView extends GetView<HomeController> {
   const HomeView({super.key});
@@ -586,7 +587,11 @@ class HomeView extends GetView<HomeController> {
           // Header
           Row(
             children: [
-              const Text('🎯', style: TextStyle(fontSize: 20)),
+              const PhosphorIcon(
+                PhosphorIconsBold.target,
+                color: AppColors.textSecondary,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Text(
                 'MISI HARIAN',
@@ -740,7 +745,13 @@ class HomeView extends GetView<HomeController> {
           color: AppColors.success.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const Center(child: Text('✅', style: TextStyle(fontSize: 20))),
+        child: const Center(
+          child: PhosphorIcon(
+            PhosphorIconsFill.checkCircle,
+            color: AppColors.success,
+            size: 24,
+          ),
+        ),
       );
     } else if (quest.isCompleted) {
       // Completed but not claimed - Glowing XP badge
@@ -975,7 +986,11 @@ class HomeView extends GetView<HomeController> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text('🛡️', style: TextStyle(fontSize: 24)),
+                        const PhosphorIcon(
+                          PhosphorIconsBold.shieldChevron,
+                          color: Colors.white,
+                          size: 26,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           'x$protects',
@@ -1332,7 +1347,11 @@ class HomeView extends GetView<HomeController> {
                 // Title
                 Row(
                   children: [
-                    const Text('🎯', style: TextStyle(fontSize: 24)),
+                    const PhosphorIcon(
+                      PhosphorIconsBold.target,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       'WEEKLY CHALLENGE',
@@ -1380,8 +1399,9 @@ class HomeView extends GetView<HomeController> {
 
             Text(
               description,
-              style: AppTextStyles.bodySmall.copyWith(
-                color: Colors.white.withValues(alpha: 0.8),
+              style: AppTextStyles.body.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w500,
               ),
             ),
 
@@ -1442,13 +1462,20 @@ class HomeView extends GetView<HomeController> {
                 // Reward info
                 Row(
                   children: [
-                    Text(rewardBadge, style: const TextStyle(fontSize: 20)),
+                    Text(
+                      rewardBadge,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       '+$rewardXP XP',
                       style: AppTextStyles.subtitle.copyWith(
                         color: Colors.white,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w200,
                       ),
                     ),
                   ],

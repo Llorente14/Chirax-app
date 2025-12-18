@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -7,8 +8,10 @@ import 'core/theme/app_colors.dart';
 import 'data/services/auth_service.dart';
 import 'data/services/database_service.dart';
 import 'data/services/notification_service.dart';
+import 'modules/auth/lock_screen_view.dart';
 import 'modules/auth/login_view.dart';
 import 'modules/auth/pairing_view.dart';
+import 'modules/auth/security_controller.dart';
 import 'modules/auth/setup_profile_view.dart';
 import 'modules/auth/splash_view.dart';
 import 'modules/dashboard/dashboard_binding.dart';
@@ -16,6 +19,9 @@ import 'modules/dashboard/dashboard_view.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize GetStorage for persistent preferences
+  await GetStorage.init();
 
   // Initialize Firebase
   await Firebase.initializeApp();
@@ -30,6 +36,9 @@ void main() async {
   Get.put(AuthService());
   Get.put(DatabaseService());
 
+  // Initialize SecurityController globally (permanent)
+  Get.put(SecurityController(), permanent: true);
+
   runApp(const ChiraxApp());
 }
 
@@ -38,9 +47,25 @@ class ChiraxApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Get security controller for lock screen gate
+    final securityController = Get.find<SecurityController>();
+
     return GetMaterialApp(
       title: 'Chirax',
       debugShowCheckedModeBanner: false,
+
+      // Lock Screen Gate - overlays entire app when locked
+      builder: (context, child) {
+        return Obx(() {
+          // If security is enabled AND app is locked, show lock screen
+          if (securityController.isEnabled.value &&
+              securityController.isLocked.value) {
+            return const LockScreenView();
+          }
+          // Otherwise show normal app content
+          return child ?? const SizedBox.shrink();
+        });
+      },
 
       // Theme dengan Google Fonts Nunito (bulat dan friendly seperti Duolingo)
       theme: ThemeData(

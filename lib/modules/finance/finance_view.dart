@@ -2,8 +2,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/utils/icon_helper.dart';
 import '../../core/utils/sound_helper.dart';
 import '../../core/widgets/bouncy_widgets.dart';
 import '../../core/widgets/chunky_button.dart';
@@ -37,7 +39,11 @@ class FinanceView extends GetView<FinanceController> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.savings_rounded, size: 80, color: Colors.grey.shade300),
+            PhosphorIcon(
+              AppIcons.navFinance,
+              size: 80,
+              color: Colors.grey.shade300,
+            ),
             const SizedBox(height: 24),
             Text(
               'Belum Ada Target',
@@ -108,7 +114,7 @@ class FinanceView extends GetView<FinanceController> {
           // === MANAGE BUTTON ===
           TextButton.icon(
             onPressed: () => Get.to(() => const ManageGoalsView()),
-            icon: const Icon(Icons.settings_rounded, size: 20),
+            icon: PhosphorIcon(AppIcons.settings, size: 20),
             label: const Text('Kelola Target & Riwayat'),
             style: TextButton.styleFrom(
               foregroundColor: AppColors.textSecondary,
@@ -461,7 +467,7 @@ class FinanceView extends GetView<FinanceController> {
 
               ChunkyButton(
                 text: 'SIMPAN TABUNGAN',
-                icon: Icons.savings_rounded,
+                icon: PhosphorIconsFill.piggyBank,
                 color: AppColors.success,
                 shadowColor: AppColors.successShadow,
                 onPressed: () => controller.addFromInput(),

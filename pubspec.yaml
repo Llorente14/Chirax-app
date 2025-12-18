@@ -67,6 +67,13 @@ dependencies:
   flutter_local_notifications: ^19.0.0
   timezone: ^0.10.0
 
+  # Security - Biometric Auth
+  local_auth: ^2.3.0
+  get_storage: ^2.1.1
+
+  # Phosphor Icons
+  phosphor_flutter: ^2.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

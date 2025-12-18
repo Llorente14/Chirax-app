@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import 'profile_controller.dart';
@@ -58,7 +59,11 @@ class AllBadgesView extends GetView<ProfileController> {
                       ),
                       child: Column(
                         children: [
-                          const Text('🏆', style: TextStyle(fontSize: 22)),
+                          const PhosphorIcon(
+                            PhosphorIconsFill.trophy,
+                            color: Colors.white,
+                            size: 22,
+                          ),
                           const SizedBox(height: 4),
                           Text(
                             '${unlockedBadges.length}',
@@ -97,7 +102,11 @@ class AllBadgesView extends GetView<ProfileController> {
                       ),
                       child: Column(
                         children: [
-                          const Text('🔒', style: TextStyle(fontSize: 22)),
+                          const PhosphorIcon(
+                            PhosphorIconsFill.lock,
+                            color: Colors.white,
+                            size: 22,
+                          ),
                           const SizedBox(height: 4),
                           Text(
                             '${lockedBadges.length}',
@@ -136,7 +145,11 @@ class AllBadgesView extends GetView<ProfileController> {
                       ),
                       child: Column(
                         children: [
-                          const Text('🎯', style: TextStyle(fontSize: 22)),
+                          const PhosphorIcon(
+                            PhosphorIconsBold.target,
+                            color: Colors.white,
+                            size: 22,
+                          ),
                           const SizedBox(height: 4),
                           Text(
                             '${controller.badges.length}',
@@ -165,7 +178,7 @@ class AllBadgesView extends GetView<ProfileController> {
               // === UNLOCKED BADGES ===
               if (unlockedBadges.isNotEmpty) ...[
                 Text(
-                  '🏆 LENCANA TERCAPAI',
+                  'LENCANA TERCAPAI',
                   style: AppTextStyles.bodySmall.copyWith(
                     fontWeight: FontWeight.w800,
                     color: AppColors.success,
@@ -193,7 +206,7 @@ class AllBadgesView extends GetView<ProfileController> {
               // === LOCKED BADGES ===
               if (lockedBadges.isNotEmpty) ...[
                 Text(
-                  '🔒 BELUM TERCAPAI',
+                  'BELUM TERCAPAI',
                   style: AppTextStyles.bodySmall.copyWith(
                     fontWeight: FontWeight.w800,
                     color: AppColors.textSecondary,

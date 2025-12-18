@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:get/get.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/utils/icon_helper.dart';
 import '../../core/utils/sound_helper.dart';
 import '../../core/widgets/chunky_card.dart';
 import '../../data/models/journey_event.dart';
@@ -23,7 +25,17 @@ class JourneyView extends GetView<JourneyController> {
             // Header
             Padding(
               padding: const EdgeInsets.all(24),
-              child: Text('📅 Our Journey', style: AppTextStyles.headline),
+              child: Row(
+                children: [
+                  const PhosphorIcon(
+                    PhosphorIconsFill.calendarHeart,
+                    color: AppColors.secondary,
+                    size: 32,
+                  ),
+                  const SizedBox(width: 10),
+                  Text('Our Journey', style: AppTextStyles.headline),
+                ],
+              ),
             ),
 
             // Calendar
@@ -159,8 +171,8 @@ class JourneyView extends GetView<JourneyController> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.event_note_rounded,
+                PhosphorIcon(
+                  PhosphorIconsFill.calendarBlank,
                   size: 80,
                   color: AppColors.textSecondary.withValues(alpha: 0.4),
                 ),
@@ -223,8 +235,8 @@ class JourneyView extends GetView<JourneyController> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                     alignment: Alignment.centerRight,
-                    child: const Icon(
-                      Icons.delete_rounded,
+                    child: const PhosphorIcon(
+                      PhosphorIconsFill.trash,
                       color: Colors.white,
                       size: 28,
                     ),
@@ -266,7 +278,13 @@ class JourneyView extends GetView<JourneyController> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Center(
-              child: Text(event.icon, style: const TextStyle(fontSize: 24)),
+              child: event.icon.length <= 2
+                  ? Text(event.icon, style: const TextStyle(fontSize: 24))
+                  : Icon(
+                      AppIcons.getIcon(event.icon),
+                      size: 24,
+                      color: event.color,
+                    ),
             ),
           ),
           const SizedBox(width: 16),

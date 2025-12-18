@@ -211,7 +211,7 @@ class CreateGoalView extends GetView<FinanceController> {
                       height: 56,
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? selectedColor.value.withValues(alpha: 0.15)
+                            ? selectedColor.value.withOpacity(0.15)
                             : Colors.white,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
@@ -223,9 +223,7 @@ class CreateGoalView extends GetView<FinanceController> {
                         boxShadow: isSelected
                             ? [
                                 BoxShadow(
-                                  color: selectedColor.value.withValues(
-                                    alpha: 0.3,
-                                  ),
+                                  color: selectedColor.value.withOpacity(0.3),
                                   offset: const Offset(0, 3),
                                   blurRadius: 0,
                                 ),

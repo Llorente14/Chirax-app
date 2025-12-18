@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/icon_helper.dart';
 import '../home/home_view.dart';
-import '../finance/finance_view.dart'; // Nanti kita buat dummy-nya
-import '../journey/journey_view.dart'; // Kalender perjalanan
-import '../profile/profile_view.dart'; // Nanti kita buat dummy-nya
+import '../finance/finance_view.dart';
+import '../journey/journey_view.dart';
+import '../profile/profile_view.dart';
 import 'dashboard_controller.dart';
 
 class DashboardView extends GetView<DashboardController> {
@@ -43,36 +45,32 @@ class DashboardView extends GetView<DashboardController> {
             backgroundColor: Colors.transparent,
             currentIndex: controller.tabIndex.value,
             onTap: controller.changeTabIndex,
-            type: BottomNavigationBarType.fixed, // Agar icon tidak bergeser
-            showSelectedLabels:
-                false, // Duolingo style: biasanya tanpa label teks
+            type: BottomNavigationBarType.fixed,
+            showSelectedLabels: false,
             showUnselectedLabels: false,
 
-            selectedItemColor: AppColors.primary, // Pink saat aktif
-            unselectedItemColor: Colors.grey.shade400, // Abu saat mati
+            selectedItemColor: AppColors.primary,
+            unselectedItemColor: Colors.grey.shade400,
 
-            items: const [
+            items: [
               BottomNavigationBarItem(
-                icon: Icon(Icons.home_rounded, size: 30),
-                activeIcon: Icon(
-                  Icons.home_rounded,
-                  size: 34,
-                ), // Sedikit lebih besar saat aktif
+                icon: PhosphorIcon(AppIcons.navHome, size: 28),
+                activeIcon: PhosphorIcon(AppIcons.navHome, size: 32),
                 label: 'Home',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.savings_rounded, size: 30),
-                activeIcon: Icon(Icons.savings_rounded, size: 34),
+                icon: PhosphorIcon(AppIcons.navFinance, size: 28),
+                activeIcon: PhosphorIcon(AppIcons.navFinance, size: 32),
                 label: 'Finance',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.calendar_month_rounded, size: 30),
-                activeIcon: Icon(Icons.calendar_month_rounded, size: 34),
+                icon: PhosphorIcon(AppIcons.navJourney, size: 28),
+                activeIcon: PhosphorIcon(AppIcons.navJourney, size: 32),
                 label: 'Journey',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.person_rounded, size: 30),
-                activeIcon: Icon(Icons.person_rounded, size: 34),
+                icon: PhosphorIcon(AppIcons.navProfile, size: 28),
+                activeIcon: PhosphorIcon(AppIcons.navProfile, size: 32),
                 label: 'Profile',
               ),
             ],

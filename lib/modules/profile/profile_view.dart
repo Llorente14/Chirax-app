@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/utils/icon_helper.dart';
 import '../../core/utils/sound_helper.dart';
 import '../../core/widgets/bouncy_widgets.dart';
 import 'profile_controller.dart';
@@ -93,8 +95,8 @@ class ProfileView extends GetView<ProfileController> {
                         ),
                       ],
                     ),
-                    child: const Icon(
-                      Icons.settings_rounded,
+                    child: PhosphorIcon(
+                      AppIcons.settings,
                       color: AppColors.textSecondary,
                       size: 22,
                     ),
@@ -141,8 +143,8 @@ class ProfileView extends GetView<ProfileController> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
-                    Icons.cake_rounded,
+                  const PhosphorIcon(
+                    PhosphorIconsFill.cake,
                     size: 18,
                     color: AppColors.primary,
                   ),
@@ -257,11 +259,7 @@ class ProfileView extends GetView<ProfileController> {
                   ),
                 ],
               ),
-              child: const Icon(
-                Icons.edit_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
+              child: PhosphorIcon(AppIcons.edit, color: Colors.white, size: 20),
             ),
           ),
         ),
@@ -518,8 +516,8 @@ class ProfileView extends GetView<ProfileController> {
                               style: const TextStyle(fontSize: 32),
                             ),
                           ),
-                          const Icon(
-                            Icons.lock_rounded,
+                          const PhosphorIcon(
+                            PhosphorIconsFill.lock,
                             color: Colors.grey,
                             size: 20,
                           ),

@@ -473,6 +473,7 @@ class _PairingViewState extends State<PairingView>
             focusedPinTheme: focusedPinTheme,
             onCompleted: (_) => _connectWithCode(),
             textCapitalization: TextCapitalization.characters,
+            keyboardType: TextInputType.text, // Allow letters and numbers
           ),
 
           const SizedBox(height: 32),

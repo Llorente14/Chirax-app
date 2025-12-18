@@ -46,8 +46,10 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>NSPhotoLibraryUsageDescription</key>
-<string>Kami butuh akses galeri untuk ganti foto profil kamu.</string>
-<key>NSCameraUsageDescription</key>
-<string>Kami butuh akses kamera untuk ambil foto profil baru.</string>
+	<string>Kami butuh akses galeri untuk ganti foto profil kamu.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Kami butuh akses kamera untuk ambil foto profil baru.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Izinkan akses Face ID untuk mengamankan data rahasia couple kalian.</string>
 </dict>
 </plist>
