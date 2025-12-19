@@ -1,7 +1,9 @@
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 import 'database_service.dart';
+import '../../modules/auth/pairing_view.dart';
 
 /// AuthService - Handles Firebase Authentication
 /// Firebase Auth automatically persists sessions - no SharedPreferences needed
@@ -124,6 +126,89 @@ class AuthService extends GetxService {
 
     // 5. All complete
     return 'dashboard';
+  }
+
+  /// Unpair/disconnect couple relationship (Soft Delete)
+  /// 1. Archives couple data to archived_couples collection
+  /// 2. Detaches both users (clears partnerId and coupleId)
+  /// 3. Deletes original couple document
+  /// 4. Navigates to PairingView
+  Future<void> unpairCouple() async {
+    try {
+      isLoading.value = true;
+
+      final uid = userId;
+      if (uid == null) {
+        Get.snackbar('Error', 'User tidak ditemukan');
+        return;
+      }
+
+      final firestore = FirebaseFirestore.instance;
+
+      // Get current user data
+      final currentUserData = userModel.value;
+      if (currentUserData == null) {
+        Get.snackbar('Error', 'Data user tidak ditemukan');
+        return;
+      }
+
+      final coupleId = currentUserData.coupleId;
+      final partnerId = currentUserData.partnerId;
+
+      if (coupleId == null || coupleId.isEmpty) {
+        Get.snackbar('Error', 'Tidak ada hubungan yang terhubung');
+        return;
+      }
+
+      // === STEP 1: Archive couple data ===
+      final coupleDoc = await firestore
+          .collection('couples')
+          .doc(coupleId)
+          .get();
+      if (coupleDoc.exists) {
+        final coupleData = coupleDoc.data() ?? {};
+        // Add archive metadata
+        coupleData['archivedAt'] = FieldValue.serverTimestamp();
+        coupleData['archivedBy'] = uid;
+        coupleData['originalCoupleId'] = coupleId;
+
+        // Save to archived_couples collection
+        await firestore.collection('archived_couples').add(coupleData);
+      }
+
+      // === STEP 2: Detach current user ===
+      await firestore.collection('users').doc(uid).update({
+        'partnerId': null,
+        'coupleId': null,
+      });
+
+      // === STEP 3: Detach partner (if exists) ===
+      if (partnerId != null && partnerId.isNotEmpty) {
+        await firestore.collection('users').doc(partnerId).update({
+          'partnerId': null,
+          'coupleId': null,
+        });
+      }
+
+      // === STEP 4: Delete original couple document ===
+      await firestore.collection('couples').doc(coupleId).delete();
+
+      // Clear local user model
+      userModel.value = null;
+
+      // === STEP 5: Navigate to Pairing View ===
+      Get.offAll(() => const PairingView());
+
+      Get.snackbar(
+        'Berhasil',
+        'Hubungan telah diputuskan',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } catch (e) {
+      Get.snackbar('Error', 'Gagal memutuskan hubungan: $e');
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   /// Handle Firebase Auth errors

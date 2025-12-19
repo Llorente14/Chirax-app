@@ -107,6 +107,17 @@ class JourneyController extends GetxController {
       // Track badge progress: Memories Saved for "Memory Hoarder" badge
       await _dbService.incrementMemoriesSaved(coupleId!);
 
+      // NEW: Track category-specific badges
+      if (category.id == 'movie') {
+        await _dbService.incrementStat(coupleId!, 'totalMovieEvents');
+      }
+      if (category.id == 'trip') {
+        await _dbService.unlockFlag(coupleId!, 'hasTripPlan');
+      }
+
+      // NEW: Track monthly events for Planner Pro badge
+      await _dbService.incrementStat(coupleId!, 'totalEventsThisMonth');
+
       // Hook to quest system - update journey quest progress
       if (updateQuest) {
         try {

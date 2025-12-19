@@ -194,6 +194,15 @@ class FinanceController extends GetxController {
       Get.find<HomeController>().updateQuestProgress('savings');
     }
 
+    // NEW: Track badge statistics
+    await _dbService.checkAndUpdateMaxDeposit(coupleId!, amount);
+
+    // NEW: Check late night interaction for Night Owl badge
+    final hour = DateTime.now().hour;
+    if (hour >= 0 && hour < 4) {
+      await _dbService.unlockFlag(coupleId!, 'hasLateNightInteraction');
+    }
+
     // Celebration if target reached
     if (newAmount >= goal.targetAmount && !goal.isTargetReached) {
       Get.snackbar(

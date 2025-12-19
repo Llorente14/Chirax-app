@@ -315,6 +315,22 @@ class ProfileController extends GetxController {
   int get totalMissions =>
       _homeController?.dailyQuests.where((q) => q.isClaimed).length ?? 0;
 
+  // === NEW: Badge Statistics Getters (from CoupleModel) ===
+  int get totalFeeds => _homeController?.coupleData.value?.totalFeeds ?? 0;
+  int get totalPokes => _homeController?.coupleData.value?.totalPokes ?? 0;
+  int get totalMovieEvents =>
+      _homeController?.coupleData.value?.totalMovieEvents ?? 0;
+  double get maxSingleDeposit =>
+      _homeController?.coupleData.value?.maxSingleDeposit ?? 0;
+  bool get hasTripPlan =>
+      _homeController?.coupleData.value?.hasTripPlan ?? false;
+  bool get hasLateNightInteraction =>
+      _homeController?.coupleData.value?.hasLateNightInteraction ?? false;
+  int? get lastCheckInHour =>
+      _homeController?.coupleData.value?.lastCheckInHour;
+  int get totalEventsMonth =>
+      _homeController?.coupleData.value?.totalEventsThisMonth ?? 0;
+
   /// Add XP (hook from quests)
   void addXP(int amount) {
     // XP is now handled by HomeController via DatabaseService
@@ -530,6 +546,133 @@ class ProfileController extends GetxController {
         currentProgress: daysTogether.clamp(0, 365),
         targetProgress: 365,
         color: AppColors.moneyPink,
+      ),
+      // === INTERACTION BADGES (Pet & Partner) ===
+      BadgeModel(
+        id: 'pet_feeder',
+        name: 'Master Chef 🍖',
+        description: 'Beri makan Mochi sebanyak 50 kali. Kenyang banget!',
+        iconEmoji: '🍖',
+        // Logic: Butuh tracking variable 'totalFeeds' di HomeController
+        isUnlocked: totalFeeds >= 50,
+        currentProgress: totalFeeds.clamp(0, 50),
+        targetProgress: 50,
+        color: Colors.orange,
+      ),
+      BadgeModel(
+        id: 'poke_war',
+        name: 'Poke Master 👉',
+        description:
+            'Colek / Kirim Rindu ke pasangan 100 kali. Kangen berat ya?',
+        iconEmoji: '👉',
+        // Logic: Butuh tracking variable 'totalPokes' di HomeController
+        isUnlocked: totalPokes >= 100,
+        currentProgress: totalPokes.clamp(0, 100),
+        targetProgress: 100,
+        color: Colors.pinkAccent,
+      ),
+
+      // === TIME & STREAK BADGES (Micro & Macro) ===
+      BadgeModel(
+        id: 'week_warrior',
+        name: 'Week Warrior 🗓️',
+        description: 'Jaga streak selama 7 hari (1 Minggu) penuh! Konsisten!',
+        iconEmoji: '🗓️',
+        // Logic: Jembatan menuju badge 'On Fire' (30 hari)
+        isUnlocked: streak >= 7,
+        currentProgress: streak.clamp(0, 7),
+        targetProgress: 7,
+        color: Colors.lightBlue,
+      ),
+      BadgeModel(
+        id: 'early_bird',
+        name: 'Early Bird ☀️',
+        description: 'Check-in sebelum jam 8 pagi. Rajin banget bangun pagi!',
+        iconEmoji: '☀️',
+        // Logic: Cek jam check-in terakhir (hour < 8)
+        isUnlocked: lastCheckInHour != null && lastCheckInHour! < 8,
+        currentProgress: (lastCheckInHour != null && lastCheckInHour! < 8)
+            ? 1
+            : 0,
+        targetProgress: 1,
+        color: Colors.amber,
+      ),
+
+      // === JOURNEY & CATEGORY BADGES ===
+      BadgeModel(
+        id: 'movie_maniac',
+        name: 'Movie Maniac 🎬',
+        description:
+            'Tambahkan 5 event kategori "Movie" di kalender. Nonton terus!',
+        iconEmoji: '🎬',
+        // Logic: Hitung jumlah event dengan category == 'movie'
+        isUnlocked: totalMovieEvents >= 5,
+        currentProgress: totalMovieEvents.clamp(0, 5),
+        targetProgress: 5,
+        color: Colors.redAccent,
+      ),
+      BadgeModel(
+        id: 'globetrotter',
+        name: 'Globetrotter ✈️',
+        description: 'Buat rencana/tabungan untuk "Trip". Siap keliling dunia!',
+        iconEmoji: '✈️',
+        // Logic: Ada event/goal dengan kategori 'trip'
+        isUnlocked: hasTripPlan,
+        currentProgress: hasTripPlan ? 1 : 0,
+        targetProgress: 1,
+        color: Colors.teal,
+      ),
+      BadgeModel(
+        id: 'planner_pro',
+        name: 'Planner Pro 📝',
+        description:
+            'Isi kalender dengan 10 event dalam satu bulan. Sibuk banget!',
+        iconEmoji: '📝',
+        // Logic: Hitung total event aktif bulan ini
+        isUnlocked: totalEventsMonth >= 10,
+        currentProgress: totalEventsMonth.clamp(0, 10),
+        targetProgress: 10,
+        color: Colors.indigoAccent,
+      ),
+
+      // === FINANCE BADGES (Behavior) ===
+      BadgeModel(
+        id: 'richie_rich',
+        name: 'Sultan Kecil 💸',
+        description: 'Menabung di atas Rp 100.000 dalam satu kali transaksi.',
+        iconEmoji: '💸',
+        // Logic: Cek history transaksi terakhir > 100k
+        isUnlocked: maxSingleDeposit >= 100000,
+        currentProgress: maxSingleDeposit >= 100000 ? 1 : 0,
+        targetProgress: 1,
+        color: Colors.greenAccent,
+      ),
+
+      // === LEVEL & XP BADGES ===
+      BadgeModel(
+        id: 'level_up',
+        name: 'Rising Star 🌟',
+        description:
+            'Mencapai Level 10 (Soulmate). Hubungan kalian makin kuat!',
+        iconEmoji: '🌟',
+        // Logic: Cek currentLevel dari ProfileController
+        isUnlocked: currentLevel >= 10,
+        currentProgress: currentLevel.clamp(0, 10),
+        targetProgress: 10,
+        color: Colors.purpleAccent,
+      ),
+
+      // === HIDDEN / FUN BADGE ===
+      BadgeModel(
+        id: 'night_owl',
+        name: 'Night Owl 🦉',
+        description: 'Melakukan interaksi (Colek/Nabung) di atas jam 12 malam.',
+        iconEmoji: '🦉',
+        // Logic: Interaksi jam 00:00 - 04:00
+        isUnlocked: hasLateNightInteraction,
+        currentProgress: hasLateNightInteraction ? 1 : 0,
+        targetProgress: 1,
+        color: Colors.black87,
       ),
     ];
   }

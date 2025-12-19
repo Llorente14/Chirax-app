@@ -26,14 +26,16 @@ class CoupleModel {
 
   // === NEW: Badge Progress (Dynamic tracking) ===
   final Map<String, int> badgeProgress;
-  // Tracks: {
-  //   'daysWithoutWithdrawal': 0,   // For "Hemat Kopi" badge
-  //   'profileViewsToday': 0,       // For "Stalker" badge
-  //   'goalsCompleted': 0,          // For "To The Moon" badge
-  //   'memoriesSaved': 0,           // For "Memory Hoarder" badge
-  //   'appOpensThisHour': 0,        // For "Bucin" badge
-  //   'totalInteractions': 0,       // For interaction-based badges
-  // }
+
+  // === NEW: Badge Statistics Tracking ===
+  final int totalFeeds; // Pet feeding count
+  final int totalPokes; // Partner colek count
+  final int totalMovieEvents; // Movie category events
+  final double maxSingleDeposit; // Largest single savings
+  final bool hasTripPlan; // Trip event flag
+  final bool hasLateNightInteraction; // 00:00-04:00 interaction
+  final int? lastCheckInHour; // Hour of last check-in (0-23)
+  final int totalEventsThisMonth; // Events added this month
 
   CoupleModel({
     required this.id,
@@ -51,6 +53,15 @@ class CoupleModel {
     this.lastQuestResetDate,
     this.weeklyChallenge,
     this.badgeProgress = const {},
+    // Badge Statistics
+    this.totalFeeds = 0,
+    this.totalPokes = 0,
+    this.totalMovieEvents = 0,
+    this.maxSingleDeposit = 0.0,
+    this.hasTripPlan = false,
+    this.hasLateNightInteraction = false,
+    this.lastCheckInHour,
+    this.totalEventsThisMonth = 0,
   });
 
   /// Calculate days together
@@ -125,6 +136,15 @@ class CoupleModel {
       weeklyChallenge: data['weeklyChallenge'] as Map<String, dynamic>?,
       // NEW: Badge Progress
       badgeProgress: Map<String, int>.from(data['badgeProgress'] ?? {}),
+      // NEW: Badge Statistics Tracking
+      totalFeeds: data['totalFeeds'] ?? 0,
+      totalPokes: data['totalPokes'] ?? 0,
+      totalMovieEvents: data['totalMovieEvents'] ?? 0,
+      maxSingleDeposit: (data['maxSingleDeposit'] ?? 0.0).toDouble(),
+      hasTripPlan: data['hasTripPlan'] ?? false,
+      hasLateNightInteraction: data['hasLateNightInteraction'] ?? false,
+      lastCheckInHour: data['lastCheckInHour'],
+      totalEventsThisMonth: data['totalEventsThisMonth'] ?? 0,
     );
   }
 
@@ -149,6 +169,15 @@ class CoupleModel {
       'weeklyChallenge': weeklyChallenge,
       // NEW: Badge Progress
       'badgeProgress': badgeProgress,
+      // NEW: Badge Statistics Tracking
+      'totalFeeds': totalFeeds,
+      'totalPokes': totalPokes,
+      'totalMovieEvents': totalMovieEvents,
+      'maxSingleDeposit': maxSingleDeposit,
+      'hasTripPlan': hasTripPlan,
+      'hasLateNightInteraction': hasLateNightInteraction,
+      'lastCheckInHour': lastCheckInHour,
+      'totalEventsThisMonth': totalEventsThisMonth,
     };
   }
 

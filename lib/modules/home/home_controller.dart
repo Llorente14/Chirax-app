@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
 import '../../core/utils/sound_helper.dart';
 import '../../core/widgets/all_clear_dialog.dart';
+import '../../core/widgets/secret_letter_dialog.dart';
 import '../../core/widgets/pet_avatar.dart';
 import '../../data/models/couple_model.dart';
 import '../../data/models/quest_model.dart';
@@ -320,6 +321,51 @@ class HomeController extends GetxController {
 
   // === ACTIONS ===
 
+  // === EASTER EGG: Secret Letter Detection ===
+  int _petTapCount = 0;
+  DateTime? _lastPetTapTime;
+
+  /// Handle pet tap for secret letter Easter egg
+  /// Triggers when user taps pet image 3 times quickly (within 1 second)
+  void handlePetTap() {
+    final now = DateTime.now();
+
+    // Check if last tap was within 1 second
+    if (_lastPetTapTime != null) {
+      final diff = now.difference(_lastPetTapTime!).inMilliseconds;
+      if (diff > 1000) {
+        // More than 1 second - reset count
+        _petTapCount = 1;
+      } else {
+        // Within 1 second - increment
+        _petTapCount++;
+      }
+    } else {
+      // First tap
+      _petTapCount = 1;
+    }
+
+    // Save current time
+    _lastPetTapTime = now;
+
+    // Check if reached 3 taps
+    if (_petTapCount >= 3) {
+      // Reset count
+      _petTapCount = 0;
+      _lastPetTapTime = null;
+
+      // Play magic sound
+      SoundHelper.playMagic();
+
+      // Show secret letter dialog
+      SecretLetterDialog.show(
+        senderName: 'Axel',
+        letterContent:
+            'Haloww geaa, kalau kamu sudah bisa baca surat ini artinya kamu udah nemuin easter eggnya, Yeayy!!\nAku mau ngucapin happy birthday ayangg yang ke 20, gaa kerasa yaa waktuu cepet benar berlalu semoga kamu selalu sehat, kuliah dan aktivitas yang kamu lakuin lancar semua dan bila ada cobaan semoga kamu di kuatkan ayangg. Selamat tahun baru dan natal juga ayangg\nAkuu makin saying sama kamuu geaa, semoga kita bisa bareng terus dan mencapai semua yang kita inginkan.\n\n Mwahh, i luv uu so much Geaa💕',
+      );
+    }
+  }
+
   // === PET INTERACTION STATE ===
   final RxBool isInteracting = false.obs;
   int _feedCount = 0;
@@ -331,6 +377,9 @@ class HomeController extends GetxController {
     if (coupleId == null) return;
     await _dbService.performCheckIn(coupleId!);
     SoundHelper.playIgnite();
+
+    // NEW: Track check-in hour for Early Bird badge
+    await _dbService.saveLastCheckInHour(coupleId!, DateTime.now().hour);
   }
 
   /// Feed the pet (enhanced with cooldown)
@@ -398,6 +447,10 @@ class HomeController extends GetxController {
     Future.delayed(const Duration(seconds: 5), () {
       _isFeedCoolingDown = false;
     });
+
+    // NEW: Track badge statistics
+    await _dbService.incrementStat(coupleId!, 'totalFeeds');
+    _checkLateNightInteraction();
   }
 
   /// Pat-pat the pet (elus)
@@ -488,6 +541,14 @@ class HomeController extends GetxController {
     });
   }
 
+  /// NEW: Check and track late night interaction (00:00 - 04:00) for Night Owl badge
+  void _checkLateNightInteraction() {
+    final hour = DateTime.now().hour;
+    if (hour >= 0 && hour < 4 && coupleId != null) {
+      _dbService.unlockFlag(coupleId!, 'hasLateNightInteraction');
+    }
+  }
+
   /// NEW: Check cooldown before interaction
   bool _checkInteractionCooldown() {
     if (!canInteract) {
@@ -523,6 +584,12 @@ class HomeController extends GetxController {
         duration: const Duration(seconds: 2),
       );
     });
+
+    // NEW: Track badge statistics
+    if (coupleId != null) {
+      _dbService.incrementStat(coupleId!, 'totalPokes');
+      _checkLateNightInteraction();
+    }
   }
 
   /// Send love (with cooldown)

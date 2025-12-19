@@ -1097,15 +1097,21 @@ class HomeView extends GetView<HomeController> {
           const SizedBox(height: 32),
 
           // Pet PNG - LARGER without bold circle
-          Container(
-            width: 280,
-            height: 280,
-            decoration: BoxDecoration(
-              color: AppColors.lightPink.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Obx(() => PetAvatar(mood: controller.petMood, size: 250)),
+          // Wrapped with GestureDetector for Easter egg (triple tap)
+          GestureDetector(
+            onTap: () => controller.handlePetTap(),
+            child: Container(
+              width: 280,
+              height: 280,
+              decoration: BoxDecoration(
+                color: AppColors.lightPink.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Obx(
+                  () => PetAvatar(mood: controller.petMood, size: 250),
+                ),
+              ),
             ),
           ),
 

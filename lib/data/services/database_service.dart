@@ -891,4 +891,63 @@ class DatabaseService extends GetxService {
   Future<void> incrementAppOpens(String coupleId) async {
     await incrementBadgeProgress(coupleId, 'appOpensThisHour');
   }
+
+  // ============================================================
+  // === NEW: Badge Statistics Tracking (Direct Field Updates) ===
+  // ============================================================
+
+  /// Increment a statistic field atomically (for totalFeeds, totalPokes, etc.)
+  Future<void> incrementStat(String coupleId, String fieldName) async {
+    try {
+      await couplesCollection.doc(coupleId).update({
+        fieldName: FieldValue.increment(1),
+      });
+    } catch (e) {
+      // Silent fail - stats are non-critical
+    }
+  }
+
+  /// Check and update max single deposit if amount is higher
+  Future<void> checkAndUpdateMaxDeposit(String coupleId, double amount) async {
+    try {
+      final doc = await couplesCollection.doc(coupleId).get();
+      final data = doc.data() as Map<String, dynamic>? ?? {};
+      final currentMax = (data['maxSingleDeposit'] ?? 0.0).toDouble();
+
+      if (amount > currentMax) {
+        await couplesCollection.doc(coupleId).update({
+          'maxSingleDeposit': amount,
+        });
+      }
+    } catch (e) {
+      // Silent fail
+    }
+  }
+
+  /// Unlock a boolean flag (set to true)
+  Future<void> unlockFlag(String coupleId, String fieldName) async {
+    try {
+      await couplesCollection.doc(coupleId).update({fieldName: true});
+    } catch (e) {
+      // Silent fail
+    }
+  }
+
+  /// Save last check-in hour (for Early Bird badge)
+  Future<void> saveLastCheckInHour(String coupleId, int hour) async {
+    try {
+      await couplesCollection.doc(coupleId).update({'lastCheckInHour': hour});
+    } catch (e) {
+      // Silent fail
+    }
+  }
+
+  /// Reset monthly events counter (called at start of new month)
+  Future<void> resetMonthlyEventsCount(String coupleId) async {
+    try {
+      await couplesCollection.doc(coupleId).update({'totalEventsThisMonth': 0});
+    } catch (e) {
+      // Silent fail
+    }
+  }
 }

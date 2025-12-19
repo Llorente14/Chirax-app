@@ -69,8 +69,8 @@ class DashboardView extends GetView<DashboardController> {
                 label: 'Journey',
               ),
               BottomNavigationBarItem(
-                icon: PhosphorIcon(AppIcons.navProfile, size: 28),
-                activeIcon: PhosphorIcon(AppIcons.navProfile, size: 32),
+                icon: Icon(Icons.person_rounded, size: 28),
+                activeIcon: Icon(Icons.person_rounded, size: 32),
                 label: 'Profile',
               ),
             ],

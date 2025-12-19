@@ -8,6 +8,8 @@ import '../../core/utils/icon_helper.dart';
 import '../../core/utils/sound_helper.dart';
 import '../../core/widgets/bouncy_widgets.dart';
 import '../../core/widgets/juicy_confirmation_dialog.dart';
+import '../../core/widgets/kaito_protection_dialog.dart';
+import '../../data/services/auth_service.dart';
 import '../home/home_controller.dart';
 import 'profile_controller.dart';
 
@@ -104,6 +106,8 @@ class SettingsView extends GetView<ProfileController> {
 
             // === ZONA BAHAYA ===
             _buildSectionTitle('Zona Bahaya'),
+            const SizedBox(height: 12),
+            _buildUnpairButton(),
             const SizedBox(height: 12),
             _buildLogoutButton(),
 
@@ -348,6 +352,52 @@ class SettingsView extends GetView<ProfileController> {
             Text(
               'KELUAR',
               style: AppTextStyles.button.copyWith(color: AppColors.dangerRed),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Unpair/Disconnect Couple Button
+  Widget _buildUnpairButton() {
+    return Bouncy3DButton(
+      onTap: () async {
+        SoundHelper.playPop();
+        // Show Kaito Protection Dialog
+        final isConfirmed = await Get.dialog<bool>(
+          const KaitoProtectionDialog(),
+          barrierColor: Colors.black.withValues(alpha: 0.5),
+        );
+        // If user correctly answered and confirmed
+        if (isConfirmed == true) {
+          final authService = Get.find<AuthService>();
+          await authService.unpairCouple();
+        }
+      },
+      shadowColor: AppColors.dangerRed.withValues(alpha: 0.5),
+      shadowHeight: 5,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        height: 56,
+        decoration: BoxDecoration(
+          color: AppColors.dangerRed,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.dangerRed, width: 2),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              PhosphorIconsFill.heartBreak,
+              color: Colors.white,
+              size: 22,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'PUTUSKAN HUBUNGAN',
+              style: AppTextStyles.button.copyWith(color: Colors.white),
             ),
           ],
         ),
