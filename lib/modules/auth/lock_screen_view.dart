@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/bouncy_widgets.dart';
+import 'package:local_auth/local_auth.dart';
 import 'security_controller.dart';
 
 /// LockScreenView - Full screen overlay when app is locked
@@ -58,14 +59,21 @@ class LockScreenView extends StatelessWidget {
               const SizedBox(height: 8),
 
               // Subtitle
-              Text(
-                'Gunakan Face ID untuk membuka',
-                style: GoogleFonts.nunito(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white.withValues(alpha: 0.8),
-                ),
-              ),
+              Obx(() {
+                final bios = securityController.availableBiometrics;
+                final bool hasFace = bios.contains(BiometricType.face);
+
+                return Text(
+                  hasFace
+                      ? 'Gunakan Face ID untuk membuka'
+                      : 'Gunakan Sidik Jari untuk membuka',
+                  style: GoogleFonts.nunito(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withValues(alpha: 0.8),
+                  ),
+                );
+              }),
 
               const SizedBox(height: 48),
 
@@ -83,25 +91,32 @@ class LockScreenView extends StatelessWidget {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.face,
-                          color: AppColors.primary,
-                          size: 24,
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'BUKA DENGAN FACE ID',
-                          style: GoogleFonts.nunito(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
+                    child: Obx(() {
+                      final bios = securityController.availableBiometrics;
+                      final bool hasFace = bios.contains(BiometricType.face);
+
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            hasFace ? Icons.face : Icons.fingerprint,
                             color: AppColors.primary,
+                            size: 24,
                           ),
-                        ),
-                      ],
-                    ),
+                          const SizedBox(width: 12),
+                          Text(
+                            hasFace
+                                ? 'BUKA DENGAN FACE ID'
+                                : 'BUKA DENGAN SIDIK JARI',
+                            style: GoogleFonts.nunito(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      );
+                    }),
                   ),
                 ),
               ),

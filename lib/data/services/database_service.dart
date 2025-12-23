@@ -5,6 +5,7 @@ import '../models/user_model.dart';
 import '../models/couple_model.dart';
 import '../models/savings_goal.dart';
 import '../models/journey_event.dart';
+import '../models/daily_task_model.dart';
 
 /// DatabaseService - Handles Cloud Firestore operations
 class DatabaseService extends GetxService {
@@ -15,6 +16,8 @@ class DatabaseService extends GetxService {
   CollectionReference get couplesCollection => _firestore.collection('couples');
   CollectionReference get pairingCodesCollection =>
       _firestore.collection('pairing_codes');
+  CollectionReference get dailyTasksCollection =>
+      _firestore.collection('daily_tasks');
 
   // ============ USER METHODS ============
 
@@ -567,7 +570,17 @@ class DatabaseService extends GetxService {
   Future<void> resetDailyQuests(String coupleId) async {
     try {
       await couplesCollection.doc(coupleId).update({
-        'dailyQuestProgress': {'savings': 0, 'journey': 0, 'interaction': 0},
+        'dailyQuestProgress': {
+          'savings': 0,
+          'journey': 0,
+          'interaction': 0,
+          'poke': 0,
+          'checkin': 0,
+          'journey_date': 0,
+          'surprise': 0,
+          'savings_amount': 0,
+          'memory': 0,
+        },
         'lastQuestResetDate': DateTime.now().toIso8601String(),
       });
     } catch (e) {
@@ -678,6 +691,28 @@ class DatabaseService extends GetxService {
           'Streak-mu diselamatkan secara otomatis! Sisa shield: ${currentProtects - 1}',
         );
       }
+    } catch (e) {
+      // Silent fail
+    }
+  }
+
+  // ============ DAILY QUEST CLAIM PERSISTENCE ============
+
+  /// Save quest claim status to Firestore
+  Future<void> saveQuestClaim(String coupleId, String questType) async {
+    try {
+      await couplesCollection.doc(coupleId).update({
+        'claimedQuests.$questType': true,
+      });
+    } catch (e) {
+      // Silent fail - quest claims are important but not critical
+    }
+  }
+
+  /// Reset all quest claims (called when quests reset)
+  Future<void> resetQuestClaims(String coupleId) async {
+    try {
+      await couplesCollection.doc(coupleId).update({'claimedQuests': {}});
     } catch (e) {
       // Silent fail
     }
@@ -949,5 +984,243 @@ class DatabaseService extends GetxService {
     } catch (e) {
       // Silent fail
     }
+  }
+
+  // ============ DAILY TASK SYSTEM (FIRESTORE-BASED) ============
+
+  /// Stream active daily tasks (where isActive == true)
+  Stream<List<DailyTaskModel>> streamActiveDailyTasks() {
+    return dailyTasksCollection
+        .where('isActive', isEqualTo: true)
+        .orderBy('order')
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => DailyTaskModel.fromFirestore(doc))
+              .toList(),
+        );
+  }
+
+  /// Get all daily tasks from Firestore
+  Future<List<DailyTaskModel>> getAllDailyTasks() async {
+    try {
+      final snapshot = await dailyTasksCollection.get();
+      return snapshot.docs
+          .map((doc) => DailyTaskModel.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// Rotate daily tasks: randomly select 3 from pool
+  /// Called when new day detected (00:29 WIB)
+  Future<void> rotateDailyTasks() async {
+    try {
+      final allTasks = await getAllDailyTasks();
+      if (allTasks.length < 3) return;
+
+      // Shuffle and pick 3
+      final shuffled = List<DailyTaskModel>.from(allTasks)..shuffle(Random());
+      final selected = shuffled.take(3).toList();
+
+      // Batch update: set all to inactive first
+      final batch = _firestore.batch();
+
+      for (var task in allTasks) {
+        batch.update(dailyTasksCollection.doc(task.id), {'isActive': false});
+      }
+
+      // Set selected 3 as active with order
+      for (int i = 0; i < selected.length; i++) {
+        batch.update(dailyTasksCollection.doc(selected[i].id), {
+          'isActive': true,
+          'order': i,
+        });
+      }
+
+      await batch.commit();
+    } catch (e) {
+      // Silent fail
+    }
+  }
+
+  /// Check and rotate tasks if past 00:29
+  Future<bool> checkAndRotateDailyTasksIfNeeded(
+    DateTime? lastRotateDate,
+  ) async {
+    final now = DateTime.now();
+    final resetTime = DateTime(now.year, now.month, now.day, 0, 29);
+
+    // If no last rotate or it's past reset time on a new day
+    if (lastRotateDate == null ||
+        (now.isAfter(resetTime) &&
+            (lastRotateDate.year != now.year ||
+                lastRotateDate.month != now.month ||
+                lastRotateDate.day != now.day))) {
+      await rotateDailyTasks();
+      return true;
+    }
+    return false;
+  }
+
+  /// Mark a task as completed by a user in couple document
+  /// Uses user UID so both partners can claim separately
+  Future<void> markTaskCompletedByUser(
+    String coupleId,
+    String taskId,
+    String userUid,
+  ) async {
+    try {
+      await couplesCollection.doc(coupleId).update({
+        'dailyTasksClaimed.$userUid': FieldValue.arrayUnion([taskId]),
+      });
+    } catch (e) {
+      // Silent fail
+    }
+  }
+
+  /// Get claimed tasks for a specific user
+  Future<List<String>> getClaimedTasksByUser(
+    String coupleId,
+    String userUid,
+  ) async {
+    try {
+      final doc = await couplesCollection.doc(coupleId).get();
+      if (!doc.exists) return [];
+
+      final data = doc.data() as Map<String, dynamic>;
+      final claimedMap =
+          data['dailyTasksClaimed'] as Map<String, dynamic>? ?? {};
+      final userClaimed = claimedMap[userUid] as List<dynamic>? ?? [];
+      return userClaimed.cast<String>();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// Reset daily tasks claimed for all users in couple
+  Future<void> resetDailyTasksClaimed(String coupleId) async {
+    try {
+      await couplesCollection.doc(coupleId).update({
+        'dailyTasksClaimed': {},
+        'lastDailyTaskReset': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      // Silent fail
+    }
+  }
+
+  /// Seed initial 11 quests to Firestore (run once)
+  Future<void> seedDailyTasks() async {
+    final tasks = [
+      // Original 3
+      DailyTaskModel(
+        id: 'savings_1',
+        title: 'Investasi Cinta',
+        description: 'Nabung 1x hari ini',
+        targetProgress: 1,
+        rewardXP: 20,
+        rewardIcon: '🥉',
+        type: 'savings',
+      ),
+      DailyTaskModel(
+        id: 'journey_1',
+        title: 'Planner Sejati',
+        description: 'Buat 1 event baru',
+        targetProgress: 1,
+        rewardXP: 30,
+        rewardIcon: '🥈',
+        type: 'journey',
+      ),
+      DailyTaskModel(
+        id: 'interaction_1',
+        title: 'Kangen Berat',
+        description: 'Interaksi 3x dengan pasangan',
+        targetProgress: 3,
+        rewardXP: 50,
+        rewardIcon: '🥇',
+        type: 'interaction',
+      ),
+      // New 8 quests
+      DailyTaskModel(
+        id: 'feed_pet',
+        title: 'Chef Mochi',
+        description: 'Beri makan Mochi 2x',
+        targetProgress: 2,
+        rewardXP: 25,
+        rewardIcon: '🍖',
+        type: 'interaction',
+      ),
+      DailyTaskModel(
+        id: 'pat_pet',
+        title: 'Sayang Mochi',
+        description: 'Elus-elus Mochi 2x',
+        targetProgress: 2,
+        rewardXP: 20,
+        rewardIcon: '🐧',
+        type: 'interaction',
+      ),
+      DailyTaskModel(
+        id: 'savings_2',
+        title: 'Si Rajin Nabung',
+        description: 'Nabung minimal Rp 10.000',
+        targetProgress: 10000,
+        rewardXP: 40,
+        rewardIcon: '💰',
+        type: 'savings_amount',
+      ),
+      DailyTaskModel(
+        id: 'journey_2',
+        title: 'Date Planner',
+        description: 'Buat event kategori Date',
+        targetProgress: 1,
+        rewardXP: 35,
+        rewardIcon: '💕',
+        type: 'journey_date',
+      ),
+      DailyTaskModel(
+        id: 'poke',
+        title: 'Colek Mesra',
+        description: 'Kirim rindu ke pasangan 1x',
+        targetProgress: 1,
+        rewardXP: 15,
+        rewardIcon: '👉',
+        type: 'poke',
+      ),
+      DailyTaskModel(
+        id: 'checkin',
+        title: 'Hadir Setiap Hari',
+        description: 'Check-in hari ini',
+        targetProgress: 1,
+        rewardXP: 25,
+        rewardIcon: '📅',
+        type: 'checkin',
+      ),
+      DailyTaskModel(
+        id: 'memory',
+        title: 'Kenangan Indah',
+        description: 'Simpan 1 memori baru',
+        targetProgress: 1,
+        rewardXP: 30,
+        rewardIcon: '📸',
+        type: 'memory',
+      ),
+      DailyTaskModel(
+        id: 'surprise',
+        title: 'Kejutan Manis',
+        description: 'Buat 1 event rahasia (surprise)',
+        targetProgress: 1,
+        rewardXP: 45,
+        rewardIcon: '🎁',
+        type: 'surprise',
+      ),
+    ];
+
+    final batch = _firestore.batch();
+    for (var task in tasks) {
+      batch.set(dailyTasksCollection.doc(task.id), task.toMap());
+    }
+    await batch.commit();
   }
 }

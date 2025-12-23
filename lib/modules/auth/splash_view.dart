@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
@@ -25,9 +26,18 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
   late Animation<double> _fadeAnimation;
   late Animation<double> _pulseAnimation;
 
+  // Random subtitle - easter egg hint
+  late String _subtitleText;
+
   @override
   void initState() {
     super.initState();
+
+    // Randomize subtitle - 20% chance to show easter egg hint
+    final random = Random();
+    _subtitleText = random.nextDouble() < 0.4
+        ? 'Tip: Penguin dapat di ketuk 3 kali 🐧'
+        : 'Love is Blind';
 
     // Play intro sound
     SoundHelper.playIntro();
@@ -156,7 +166,7 @@ class _SplashViewState extends State<SplashView> with TickerProviderStateMixin {
                 child: ScaleTransition(
                   scale: _pulseAnimation,
                   child: Text(
-                    'Love is Blind',
+                    _subtitleText,
                     style: AppTextStyles.subtitle.copyWith(
                       fontSize: 20,
                       fontWeight: FontWeight.w600,

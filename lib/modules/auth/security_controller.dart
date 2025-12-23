@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:local_auth/local_auth.dart';
 import '../../core/services/biometric_service.dart';
 
 /// SecurityController - Manages app lock state and biometric authentication
@@ -10,9 +11,14 @@ class SecurityController extends GetxController with WidgetsBindingObserver {
 
   // Key for persistent storage
   static const String _securityEnabledKey = 'security_enabled';
+  static const String _autoUnlockKey = 'auto_unlock_enabled';
 
   // State: Is security feature enabled?
   late RxBool isEnabled;
+  late RxBool isAutoUnlockEnabled;
+
+  // Available biometrics
+  final RxList<BiometricType> availableBiometrics = <BiometricType>[].obs;
 
   // State: Is app currently locked?
   late RxBool isLocked;
@@ -28,14 +34,21 @@ class SecurityController extends GetxController with WidgetsBindingObserver {
     final savedEnabled = _storage.read<bool>(_securityEnabledKey) ?? false;
     isEnabled = savedEnabled.obs;
 
+    // Load auto unlock preference (default: true)
+    final savedAutoUnlock = _storage.read<bool>(_autoUnlockKey) ?? true;
+    isAutoUnlockEnabled = savedAutoUnlock.obs;
+
+    // Check biometrics
+    _checkBiometrics();
+
     // Initially locked if security is enabled
     isLocked = savedEnabled.obs;
 
     // Register lifecycle observer
     WidgetsBinding.instance.addObserver(this);
 
-    // Auto-authenticate on first launch if enabled
-    if (isEnabled.value && isLocked.value) {
+    // Auto-authenticate on first launch if enabled AND auto unlock allowed
+    if (isEnabled.value && isLocked.value && isAutoUnlockEnabled.value) {
       Future.delayed(const Duration(milliseconds: 500), () {
         authenticateUser();
       });
@@ -65,7 +78,7 @@ class SecurityController extends GetxController with WidgetsBindingObserver {
 
       case AppLifecycleState.resumed:
         // User came back - authenticate
-        if (isLocked.value) {
+        if (isLocked.value && isAutoUnlockEnabled.value) {
           authenticateUser();
         }
         break;
@@ -117,6 +130,18 @@ class SecurityController extends GetxController with WidgetsBindingObserver {
     } finally {
       _isAuthenticating = false;
     }
+  }
+
+  /// Check available biometrics
+  Future<void> _checkBiometrics() async {
+    final bios = await BiometricService.getAvailableBiometrics();
+    availableBiometrics.value = bios;
+  }
+
+  /// Toggle auto unlock
+  void toggleAutoUnlock(bool val) {
+    isAutoUnlockEnabled.value = val;
+    _storage.write(_autoUnlockKey, val);
   }
 
   /// Check if biometrics is available on this device

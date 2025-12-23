@@ -69,13 +69,38 @@ class NotificationService {
     return true;
   }
 
-  /// Schedule daily reminder notification
-  /// Testing: 18:32 | Production: 20:00
+  /// Schedule daily reminder notifications
+  /// 3x sehari: 12:00 (siang), 16:00 (sore), 20:00 (malam)
   static Future<void> scheduleDailyReminder() async {
     if (!_isInitialized) await init();
 
     // Cancel existing reminders first
     await cancelAll();
+
+    // Schedule times and messages
+    final schedules = [
+      {
+        'id': 1,
+        'hour': 12,
+        'minute': 0,
+        'title': '☀️ Waktunya istirahat siang!',
+        'body': 'Jangan lupa check-in sama Mochi yaa~ 💕',
+      },
+      {
+        'id': 2,
+        'hour': 16,
+        'minute': 0,
+        'title': '🌤️ Sore yang indah!',
+        'body': 'Mochi nungguin kamu nih. Check-in yuk biar streak aman! 🔥',
+      },
+      {
+        'id': 3,
+        'hour': 20,
+        'minute': 0,
+        'title': '🌙 Jangan biarkan apinya padam!',
+        'body': 'Mochi kangen nih. Check-in sekarang yuk buat jaga streak! 💫',
+      },
+    ];
 
     // Notification details
     const androidDetails = AndroidNotificationDetails(
@@ -96,32 +121,35 @@ class NotificationService {
       ),
     );
 
-    // Calculate next 18:32 (testing) - change to 20:00 for production
     final now = tz.TZDateTime.now(tz.local);
-    var scheduledDate = tz.TZDateTime(
-      tz.local,
-      now.year,
-      now.month,
-      now.day,
-      20,
-      0,
-    );
 
-    // If time has passed today, schedule for tomorrow
-    if (scheduledDate.isBefore(now)) {
-      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    // Schedule each notification
+    for (final schedule in schedules) {
+      var scheduledDate = tz.TZDateTime(
+        tz.local,
+        now.year,
+        now.month,
+        now.day,
+        schedule['hour'] as int,
+        schedule['minute'] as int,
+      );
+
+      // If time has passed today, schedule for tomorrow
+      if (scheduledDate.isBefore(now)) {
+        scheduledDate = scheduledDate.add(const Duration(days: 1));
+      }
+
+      // Schedule the notification
+      await _notifications.zonedSchedule(
+        schedule['id'] as int,
+        schedule['title'] as String,
+        schedule['body'] as String,
+        scheduledDate,
+        notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time, // Repeat daily
+      );
     }
-
-    // Schedule the notification
-    await _notifications.zonedSchedule(
-      0, // Notification ID
-      '🔥 Jangan biarkan apinya padam!', // Title
-      'Mochi kangen nih. Check-in sekarang yuk buat jaga streak!', // Body
-      scheduledDate,
-      notificationDetails,
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.time, // Repeat daily
-    );
   }
 
   /// Cancel all scheduled notifications

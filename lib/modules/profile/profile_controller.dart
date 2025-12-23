@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/badge_model.dart';
@@ -10,10 +11,12 @@ import '../../data/services/database_service.dart';
 import '../../data/services/notification_service.dart';
 import '../home/home_controller.dart';
 import '../auth/login_view.dart';
+import '../auth/security_controller.dart';
 
 class ProfileController extends GetxController {
   final AuthService _authService = Get.find<AuthService>();
   final DatabaseService _dbService = Get.find<DatabaseService>();
+  final GetStorage _storage = GetStorage();
 
   // === SECURITY & PREFERENCES ===
   final isBiometricActive = false.obs;
@@ -46,6 +49,9 @@ class ProfileController extends GetxController {
 
     // Load badges
     _loadBadges();
+
+    // Load saved preferences from storage
+    _loadPreferences();
 
     // Set up reactive listener after a short delay to ensure HomeController is ready
     Future.delayed(const Duration(milliseconds: 500), () {
@@ -106,19 +112,63 @@ class ProfileController extends GetxController {
 
   // === SECURITY TOGGLES ===
 
-  void toggleBiometric(bool val) {
-    isBiometricActive.value = val;
-    if (val) {
-      Get.snackbar(
-        '🔐 Keamanan Aktif',
-        'Kunci biometrik berhasil diaktifkan',
-        snackPosition: SnackPosition.TOP,
-      );
+  /// Load preferences from GetStorage
+  void _loadPreferences() {
+    // Use same key as SecurityController for biometric
+    isBiometricActive.value = _storage.read('security_enabled') ?? false;
+    isSoundEnabled.value = _storage.read('sound_enabled') ?? true;
+    isNotificationActive.value = _storage.read('notification_enabled') ?? true;
+  }
+
+  void toggleBiometric(bool val) async {
+    // Use SecurityController to toggle security (requires biometric verification)
+    try {
+      final securityController = Get.find<SecurityController>();
+      final success = await securityController.toggleSecurity(val);
+      if (success) {
+        isBiometricActive.value = val;
+        if (val) {
+          Get.snackbar(
+            '🔐 Keamanan Aktif',
+            'Kunci biometrik berhasil diaktifkan',
+            snackPosition: SnackPosition.TOP,
+          );
+        } else {
+          Get.snackbar(
+            '🔓 Keamanan Nonaktif',
+            'Kunci biometrik dinonaktifkan',
+            snackPosition: SnackPosition.TOP,
+          );
+        }
+      }
+    } catch (e) {
+      // SecurityController not found, fallback to direct storage
+      isBiometricActive.value = val;
+      _storage.write('security_enabled', val);
+    }
+  }
+
+  // Proxy to SecurityController for Auto Unlock
+  RxBool get isAutoUnlockEnabled {
+    try {
+      return Get.find<SecurityController>().isAutoUnlockEnabled;
+    } catch (e) {
+      return false.obs;
+    }
+  }
+
+  void toggleAutoUnlock(bool val) {
+    try {
+      Get.find<SecurityController>().toggleAutoUnlock(val);
+    } catch (e) {
+      debugPrint('SecurityController not found');
     }
   }
 
   void toggleNotification(bool val) {
     isNotificationActive.value = val;
+    // Persist to storage
+    _storage.write('notification_enabled', val);
     if (val) {
       // User enabled notifications - schedule daily reminder
       NotificationService.requestPermissions().then((_) {

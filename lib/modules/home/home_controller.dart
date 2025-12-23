@@ -40,6 +40,7 @@ class HomeController extends GetxController {
   // Stream subscription
   StreamSubscription? _coupleSubscription;
   StreamSubscription? _partnerSubscription;
+  StreamSubscription? _dailyTasksSubscription;
 
   // === COMPUTED GETTERS ===
 
@@ -61,16 +62,13 @@ class HomeController extends GetxController {
   /// Get days together (returns -1 if date not properly set)
   int get daysTogether => coupleData.value?.daysTogether ?? 0;
 
-  /// Check if anniversary date is properly set (not today/default)
+  /// Check if anniversary date is properly set
   bool get hasAnniversaryDateSet {
     final startDate = coupleData.value?.startDate;
     if (startDate == null) return false;
-    final now = DateTime.now();
-    // If startDate is same as today (within tolerance), consider it as "not set"
-    final diff = now.difference(startDate).inDays.abs();
-    // If startDate is in the future or very recent (same day), might be unset
-    return diff > 0 ||
-        startDate.isBefore(DateTime(now.year, now.month, now.day));
+    // Consider date as "set" if it exists in Firestore
+    // The date was explicitly set during pairing
+    return true;
   }
 
   /// Get formatted anniversary date
@@ -159,12 +157,22 @@ class HomeController extends GetxController {
   void onInit() {
     super.onInit();
     _initializeData();
+
+    // Listen to auth state changes to reinitialize when user changes
+    // This fixes first-time load issue where auth may not be ready
+    ever(_authService.userModel, (userModel) {
+      if (userModel != null && coupleData.value == null) {
+        // User model loaded but couple data not yet - reinitialize
+        _initializeData();
+      }
+    });
   }
 
   @override
   void onClose() {
     _coupleSubscription?.cancel();
     _partnerSubscription?.cancel();
+    _dailyTasksSubscription?.cancel();
     super.onClose();
   }
 
@@ -246,77 +254,89 @@ class HomeController extends GetxController {
     }
   }
 
-  /// NEW: Check and reset quests if new day
+  /// NEW: Check and reset quests if new day (now handles task rotation)
   Future<void> _checkAndResetQuestsIfNeeded(String coupleId) async {
     final couple = await _dbService.getCoupleData(coupleId);
-    if (couple != null) {
-      final wasReset = await _dbService.checkAndResetQuestsIfNewDay(
-        coupleId,
-        couple.lastQuestResetDate,
-      );
-      if (wasReset) {
-        // Quests were reset, initialize fresh
-        _initDailyQuests();
-      } else {
-        // Load progress from Firestore
-        _syncQuestsFromFirestore(couple);
-      }
-    } else {
-      _initDailyQuests();
+    if (couple == null) return;
+
+    // Get last daily task reset time
+    final lastReset = couple.lastQuestResetDate;
+    final now = DateTime.now();
+    final resetTime = DateTime(now.year, now.month, now.day, 0, 29);
+
+    // Check if we need to reset (past 00:29 on new day)
+    if (lastReset == null ||
+        (now.isAfter(resetTime) &&
+            (lastReset.year != now.year ||
+                lastReset.month != now.month ||
+                lastReset.day != now.day))) {
+      // Rotate tasks and reset claimed status
+      await _dbService.rotateDailyTasks();
+      await _dbService.resetDailyTasksClaimed(coupleId);
+      await _dbService.resetDailyQuests(coupleId);
     }
+
+    // Start listening to active tasks stream
+    _startDailyTasksStream(coupleId);
   }
 
-  /// NEW: Sync quests from Firestore
+  /// Stream active daily tasks from Firestore
+  void _startDailyTasksStream(String coupleId) {
+    _dailyTasksSubscription?.cancel();
+
+    _dailyTasksSubscription = _dbService.streamActiveDailyTasks().listen((
+      tasks,
+    ) async {
+      if (tasks.isEmpty) return;
+
+      // Get current user's claimed tasks
+      final userUid = _authService.userId;
+      final claimedIds = userUid != null
+          ? await _dbService.getClaimedTasksByUser(coupleId, userUid)
+          : <String>[];
+
+      // Get progress from couple data (fetch fresh if not loaded yet)
+      Map<String, int> progress = {};
+      if (coupleData.value != null) {
+        progress = coupleData.value!.dailyQuestProgress;
+      } else {
+        // Fetch fresh couple data if not loaded yet
+        final freshCouple = await _dbService.getCoupleData(coupleId);
+        if (freshCouple != null) {
+          progress = freshCouple.dailyQuestProgress;
+        }
+      }
+
+      // Convert DailyTaskModel to QuestModel with progress
+      dailyQuests.value = tasks.map((task) {
+        final currentProgress = progress[task.type] ?? 0;
+        final isClaimed = claimedIds.contains(task.id);
+
+        return QuestModel(
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          currentProgress: currentProgress,
+          targetProgress: task.targetProgress,
+          rewardXP: task.rewardXP,
+          rewardIcon: task.rewardIcon,
+          isClaimed: isClaimed,
+          type: task.type,
+        );
+      }).toList();
+    });
+  }
+
+  /// NEW: Sync quests from Firestore (called when couple data updates)
   void _syncQuestsFromFirestore(CoupleModel couple) {
     final progress = couple.dailyQuestProgress;
 
-    // Initialize quests first if empty
-    if (dailyQuests.isEmpty) {
-      _initDailyQuests();
-    }
-
-    // Update progress from Firestore
+    // Update progress for existing quests
     for (var quest in dailyQuests) {
       final firestoreProgress = progress[quest.type] ?? 0;
       quest.currentProgress = firestoreProgress;
     }
     dailyQuests.refresh();
-  }
-
-  /// Initialize daily quests
-  void _initDailyQuests() {
-    dailyQuests.value = [
-      QuestModel(
-        id: 'quest_savings',
-        title: 'Investasi Cinta',
-        description: 'Nabung 1x hari ini',
-        currentProgress: 0,
-        targetProgress: 1,
-        rewardXP: 20,
-        rewardIcon: '🥉',
-        type: 'savings',
-      ),
-      QuestModel(
-        id: 'quest_journey',
-        title: 'Planner Sejati',
-        description: 'Buat 1 event baru',
-        currentProgress: 0,
-        targetProgress: 1,
-        rewardXP: 30,
-        rewardIcon: '🥈',
-        type: 'journey',
-      ),
-      QuestModel(
-        id: 'quest_interaction',
-        title: 'Kangen Berat',
-        description: 'Interaksi 3x',
-        currentProgress: 0,
-        targetProgress: 3,
-        rewardXP: 50,
-        rewardIcon: '🥇',
-        type: 'interaction',
-      ),
-    ];
   }
 
   // === ACTIONS ===
@@ -378,6 +398,9 @@ class HomeController extends GetxController {
     await _dbService.performCheckIn(coupleId!);
     SoundHelper.playIgnite();
 
+    // Update 'checkin' quest progress
+    updateQuestProgress('checkin');
+
     // NEW: Track check-in hour for Early Bird badge
     await _dbService.saveLastCheckInHour(coupleId!, DateTime.now().hour);
   }
@@ -419,6 +442,9 @@ class HomeController extends GetxController {
     // Play sound and update mood
     SoundHelper.playCoins();
     await _dbService.updatePetMood(coupleId!, 'eating');
+
+    // Update quest progress for 'interaction' type quests
+    updateQuestProgress('interaction');
 
     Get.snackbar(
       '🍔 Nyam nyam!',
@@ -468,6 +494,9 @@ class HomeController extends GetxController {
     // Update mood to happy
     await _dbService.updatePetMood(coupleId!, 'happy');
 
+    // Update quest progress for 'interaction' type quests
+    updateQuestProgress('interaction');
+
     // Show heart effect dialog
     _showHeartEffect();
 
@@ -493,22 +522,28 @@ class HomeController extends GetxController {
       Dialog(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        child: Center(
-          child: Lottie.asset(
-            'assets/lottie/love_hearts.json',
-            width: 200,
-            height: 200,
-            repeat: false,
-            onLoaded: (composition) {
-              Future.delayed(composition.duration, () {
-                if (Get.isDialogOpen ?? false) Get.back();
-              });
-            },
+        child: GestureDetector(
+          // Double tap to dismiss early
+          onDoubleTap: () {
+            if (Get.isDialogOpen ?? false) Get.back();
+          },
+          child: Center(
+            child: Lottie.asset(
+              'assets/lottie/love_hearts.json',
+              width: 200,
+              height: 200,
+              repeat: false,
+              onLoaded: (composition) {
+                Future.delayed(composition.duration, () {
+                  if (Get.isDialogOpen ?? false) Get.back();
+                });
+              },
+            ),
           ),
         ),
       ),
       barrierColor: Colors.transparent,
-      barrierDismissible: false,
+      barrierDismissible: true, // Also allow tap on barrier to dismiss
     );
   }
 
@@ -570,6 +605,7 @@ class HomeController extends GetxController {
 
     SoundHelper.playMagic();
     updateQuestProgress('interaction');
+    updateQuestProgress('poke'); // Specific poke quest
     _showInteractionDialog();
 
     if (partnerId != null) {
@@ -695,7 +731,7 @@ class HomeController extends GetxController {
   }
 
   /// Claim completed quest
-  void claimQuest(QuestModel quest) {
+  Future<void> claimQuest(QuestModel quest) async {
     if (quest.isCompleted && !quest.isClaimed) {
       final index = dailyQuests.indexWhere((q) => q.id == quest.id);
       if (index != -1) {
@@ -703,9 +739,15 @@ class HomeController extends GetxController {
         dailyQuests[index].isClaimed = true;
         dailyQuests.refresh();
 
-        // Add XP to couple
-        if (coupleId != null) {
-          _dbService.addXP(coupleId!, quest.rewardXP);
+        // Add XP to couple and mark task as claimed for THIS user
+        final userUid = _authService.userId;
+        if (coupleId != null && userUid != null) {
+          await _dbService.addXP(coupleId!, quest.rewardXP);
+          await _dbService.markTaskCompletedByUser(
+            coupleId!,
+            quest.id,
+            userUid,
+          );
         }
 
         // Also add to profile

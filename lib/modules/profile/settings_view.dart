@@ -100,6 +100,24 @@ class SettingsView extends GetView<ProfileController> {
                 value: controller.isBiometricActive,
                 onChanged: controller.toggleBiometric,
               ),
+              Obx(() {
+                if (controller.isBiometricActive.value) {
+                  return Column(
+                    children: [
+                      Divider(height: 1, color: Colors.grey.shade200),
+                      _buildSettingToggle(
+                        icon: PhosphorIconsFill.lightning,
+                        iconColor: Colors.amber,
+                        title: 'Buka Otomatis',
+                        subtitle: 'Langsung pindai saat dibuka',
+                        value: controller.isAutoUnlockEnabled,
+                        onChanged: controller.toggleAutoUnlock,
+                      ),
+                    ],
+                  );
+                }
+                return const SizedBox.shrink();
+              }),
             ]),
 
             const SizedBox(height: 28),

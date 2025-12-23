@@ -191,7 +191,13 @@ class FinanceController extends GetxController {
 
     // Hook to quest system - update savings quest progress
     if (Get.isRegistered<HomeController>()) {
-      Get.find<HomeController>().updateQuestProgress('savings');
+      final homeCtrl = Get.find<HomeController>();
+      homeCtrl.updateQuestProgress('savings');
+
+      // Track savings_amount quest (Rp 10.000+ in a day)
+      if (amount >= 10000) {
+        homeCtrl.updateQuestProgress('savings_amount');
+      }
     }
 
     // NEW: Track badge statistics

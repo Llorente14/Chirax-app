@@ -19,6 +19,8 @@ class CoupleModel {
   // === NEW: Daily Quest Persistence ===
   final Map<String, int>
   dailyQuestProgress; // {savings: 0, journey: 0, interaction: 0}
+  final Map<String, bool>
+  claimedQuests; // {savings: true, journey: false, interaction: true}
   final DateTime? lastQuestResetDate;
 
   // === NEW: Weekly Challenge ===
@@ -50,6 +52,7 @@ class CoupleModel {
     this.streakProtects = 2,
     this.lastProtectResetMonth = 0,
     this.dailyQuestProgress = const {},
+    this.claimedQuests = const {},
     this.lastQuestResetDate,
     this.weeklyChallenge,
     this.badgeProgress = const {},
@@ -127,6 +130,7 @@ class CoupleModel {
       dailyQuestProgress: Map<String, int>.from(
         data['dailyQuestProgress'] ?? {},
       ),
+      claimedQuests: Map<String, bool>.from(data['claimedQuests'] ?? {}),
       lastQuestResetDate: data['lastQuestResetDate'] != null
           ? (data['lastQuestResetDate'] is Timestamp
                 ? (data['lastQuestResetDate'] as Timestamp).toDate()
@@ -164,6 +168,7 @@ class CoupleModel {
       'lastProtectResetMonth': lastProtectResetMonth,
       // NEW: Daily Quest Persistence
       'dailyQuestProgress': dailyQuestProgress,
+      'claimedQuests': claimedQuests,
       'lastQuestResetDate': lastQuestResetDate?.toIso8601String(),
       // NEW: Weekly Challenge
       'weeklyChallenge': weeklyChallenge,

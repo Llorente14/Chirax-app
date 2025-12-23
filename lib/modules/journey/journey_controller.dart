@@ -121,7 +121,16 @@ class JourneyController extends GetxController {
       // Hook to quest system - update journey quest progress
       if (updateQuest) {
         try {
-          Get.find<HomeController>().updateQuestProgress('journey');
+          final homeCtrl = Get.find<HomeController>();
+          homeCtrl.updateQuestProgress('journey');
+
+          // Specific quest types based on category
+          if (category.id == 'date') {
+            homeCtrl.updateQuestProgress('journey_date');
+          }
+          if (isSurprise) {
+            homeCtrl.updateQuestProgress('surprise');
+          }
         } catch (e) {
           // HomeController not ready yet, skip
         }
