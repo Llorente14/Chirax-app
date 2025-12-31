@@ -8,6 +8,7 @@ class UserModel {
   final String? partnerId;
   final String? coupleId;
   final String? avatar; // NEW: 'DEFAULT', 'assets/...', or 'base64:...'
+  final DateTime? lastActive; // NEW: For online/offline status
   final DateTime createdAt;
 
   UserModel({
@@ -19,6 +20,7 @@ class UserModel {
     this.partnerId,
     this.coupleId,
     this.avatar,
+    this.lastActive,
     required this.createdAt,
   });
 
@@ -27,6 +29,12 @@ class UserModel {
 
   /// Check if user is paired with partner
   bool get isPaired => partnerId != null && partnerId!.isNotEmpty;
+
+  /// Check if user is online (active within last 5 minutes)
+  bool get isOnline {
+    if (lastActive == null) return false;
+    return DateTime.now().difference(lastActive!).inMinutes < 5;
+  }
 
   /// Create from Firestore document
   factory UserModel.fromMap(Map<String, dynamic> map, String docId) {
@@ -41,6 +49,9 @@ class UserModel {
       partnerId: map['partnerId'],
       coupleId: map['coupleId'],
       avatar: map['avatar'],
+      lastActive: map['lastActive'] != null
+          ? DateTime.tryParse(map['lastActive'])
+          : null,
       createdAt: map['createdAt'] != null
           ? DateTime.tryParse(map['createdAt']) ?? DateTime.now()
           : DateTime.now(),
@@ -57,6 +68,7 @@ class UserModel {
       'partnerId': partnerId,
       'coupleId': coupleId,
       'avatar': avatar,
+      'lastActive': lastActive?.toIso8601String(),
       'createdAt': createdAt.toIso8601String(),
     };
   }
@@ -69,6 +81,7 @@ class UserModel {
     String? partnerId,
     String? coupleId,
     String? avatar,
+    DateTime? lastActive,
   }) {
     return UserModel(
       uid: uid,
@@ -79,6 +92,7 @@ class UserModel {
       partnerId: partnerId ?? this.partnerId,
       coupleId: coupleId ?? this.coupleId,
       avatar: avatar ?? this.avatar,
+      lastActive: lastActive ?? this.lastActive,
       createdAt: createdAt,
     );
   }

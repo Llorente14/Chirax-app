@@ -397,84 +397,87 @@ class FinanceView extends GetView<FinanceController> {
 
     SoundHelper.playSwipe();
     Get.bottomSheet(
-      Container(
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(28),
-            topRight: Radius.circular(28),
+      SafeArea(
+        top: false,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(28),
+              topRight: Radius.circular(28),
+            ),
           ),
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('💵 Tambah Tabungan', style: AppTextStyles.title),
-                  GestureDetector(
-                    onTap: () => Get.back(),
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        shape: BoxShape.circle,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('💵 Tambah Tabungan', style: AppTextStyles.title),
+                    GestureDetector(
+                      onTap: () => Get.back(),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close, color: Colors.grey),
                       ),
-                      child: const Icon(Icons.close, color: Colors.grey),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              TextField(
-                controller: controller.amountController,
-                keyboardType: TextInputType.number,
-                inputFormatters: [_RupiahInputFormatter()],
-                style: AppTextStyles.headline.copyWith(fontSize: 32),
-                textAlign: TextAlign.center,
-                decoration: InputDecoration(
-                  hintText: '0',
-                  hintStyle: AppTextStyles.headline.copyWith(
-                    fontSize: 32,
-                    color: Colors.grey.shade300,
-                  ),
-                  prefixText: 'Rp ',
-                  prefixStyle: AppTextStyles.title.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                  filled: true,
-                  fillColor: AppColors.offWhite,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.all(20),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              Text('Pilih Nominal:', style: AppTextStyles.subtitle),
-              const SizedBox(height: 12),
+                TextField(
+                  controller: controller.amountController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [_RupiahInputFormatter()],
+                  style: AppTextStyles.headline.copyWith(fontSize: 32),
+                  textAlign: TextAlign.center,
+                  decoration: InputDecoration(
+                    hintText: '0',
+                    hintStyle: AppTextStyles.headline.copyWith(
+                      fontSize: 32,
+                      color: Colors.grey.shade300,
+                    ),
+                    prefixText: 'Rp ',
+                    prefixStyle: AppTextStyles.title.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                    filled: true,
+                    fillColor: AppColors.offWhite,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.all(20),
+                  ),
+                ),
+                const SizedBox(height: 24),
 
-              _buildPresetGrid(),
+                Text('Pilih Nominal:', style: AppTextStyles.subtitle),
+                const SizedBox(height: 12),
 
-              const SizedBox(height: 24),
+                _buildPresetGrid(),
 
-              ChunkyButton(
-                text: 'SIMPAN TABUNGAN',
-                icon: PhosphorIconsFill.piggyBank,
-                color: AppColors.success,
-                shadowColor: AppColors.successShadow,
-                onPressed: () => controller.addFromInput(),
-              ),
+                const SizedBox(height: 24),
 
-              const SizedBox(height: 16),
-            ],
+                ChunkyButton(
+                  text: 'SIMPAN TABUNGAN',
+                  icon: PhosphorIconsFill.piggyBank,
+                  color: AppColors.success,
+                  shadowColor: AppColors.successShadow,
+                  onPressed: () => controller.addFromInput(),
+                ),
+
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
         ),
       ),

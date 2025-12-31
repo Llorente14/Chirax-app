@@ -76,6 +76,17 @@ class DatabaseService extends GetxService {
     });
   }
 
+  /// Update user's last active timestamp (for online status)
+  Future<void> updateLastActive(String uid) async {
+    try {
+      await usersCollection.doc(uid).update({
+        'lastActive': DateTime.now().toIso8601String(),
+      });
+    } catch (e) {
+      // Silent fail
+    }
+  }
+
   // ============ PAIRING CODE METHODS ============
 
   /// Generate unique 6-character pairing code
@@ -405,18 +416,53 @@ class DatabaseService extends GetxService {
     }
   }
 
-  /// Poke partner (send notification simulation)
-  Future<void> pokePartner(String partnerUid) async {
+  /// Send notification to partner (stored in Firestore for partner to see when they open app)
+  /// Type can be: 'colek', 'rindu', 'cek_app'
+  Future<void> sendPartnerNotification(
+    String partnerUid,
+    String senderName,
+    String type,
+  ) async {
     try {
-      // For now, just update a field to trigger notification
-      // In real app, use Firebase Cloud Messaging
       await usersCollection.doc(partnerUid).update({
-        'lastPokedAt': FieldValue.serverTimestamp(),
-        'lastPokedBy': 'partner', // Could be the actual UID
+        'pendingNotification': {
+          'type': type,
+          'senderName': senderName,
+          'timestamp': FieldValue.serverTimestamp(),
+          'read': false,
+        },
       });
     } catch (e) {
       // Silent fail
     }
+  }
+
+  /// Check and show pending notification for user
+  Future<Map<String, dynamic>?> checkPendingNotification(String uid) async {
+    try {
+      final doc = await usersCollection.doc(uid).get();
+      if (!doc.exists) return null;
+
+      final data = doc.data() as Map<String, dynamic>;
+      final notification = data['pendingNotification'] as Map<String, dynamic>?;
+
+      if (notification != null && notification['read'] != true) {
+        // Mark as read
+        await usersCollection.doc(uid).update({
+          'pendingNotification.read': true,
+        });
+        return notification;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Legacy poke method - calls sendPartnerNotification
+  @Deprecated('Use sendPartnerNotification instead')
+  Future<void> pokePartner(String partnerUid) async {
+    await sendPartnerNotification(partnerUid, 'Partner', 'colek');
   }
 
   /// Stream couple document changes (legacy)

@@ -49,7 +49,14 @@ class SecurityController extends GetxController with WidgetsBindingObserver {
 
     // Auto-authenticate on first launch if enabled AND auto unlock allowed
     if (isEnabled.value && isLocked.value && isAutoUnlockEnabled.value) {
-      Future.delayed(const Duration(milliseconds: 500), () {
+      Future.delayed(const Duration(milliseconds: 500), () async {
+        // Check if biometric is available first
+        final isSupported = await BiometricService.isDeviceSupported();
+        if (!isSupported) {
+          // Device doesn't support biometric - auto unlock
+          isLocked.value = false;
+          return;
+        }
         authenticateUser();
       });
     }

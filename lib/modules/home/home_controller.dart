@@ -50,8 +50,11 @@ class HomeController extends GetxController {
   /// Get partner name
   String get partnerName => partnerData.value?.name ?? 'Partner';
 
-  /// Get partner avatar (placeholder for now)
-  String get partnerAvatar => 'assets/images/avatar_me.png';
+  /// Get partner avatar (from Firestore, supports base64, asset, or DEFAULT)
+  String get partnerAvatar => partnerData.value?.avatar ?? 'DEFAULT';
+
+  /// Check if partner is online (active within last 5 minutes)
+  bool get isPartnerOnline => partnerData.value?.isOnline ?? false;
 
   /// Get couple ID
   String? get coupleId => _authService.userModel.value?.coupleId;
@@ -166,6 +169,51 @@ class HomeController extends GetxController {
         _initializeData();
       }
     });
+
+    // Check for pending notification from partner after short delay
+    Future.delayed(const Duration(seconds: 2), () {
+      _checkAndShowPendingNotification();
+    });
+  }
+
+  /// Check and show pending notification from partner
+  Future<void> _checkAndShowPendingNotification() async {
+    final uid = _authService.userId;
+    if (uid == null) return;
+
+    final notification = await _dbService.checkPendingNotification(uid);
+    if (notification == null) return;
+
+    final type = notification['type'] as String?;
+    final senderName = notification['senderName'] as String? ?? 'Partner';
+
+    String title;
+    String body;
+
+    switch (type) {
+      case 'colek':
+        title = '👋 Kamu dicolek!';
+        body = '$senderName mencolekmu~';
+        break;
+      case 'rindu':
+        title = '❤️ Ada yang rindu!';
+        body = '$senderName bilang kangen kamu 💕';
+        break;
+      case 'cek_app':
+        title = '📢 Bukaa appnya sayangg!';
+        body = 'Tolong buka appnya yaa';
+        break;
+      default:
+        return;
+    }
+
+    SoundHelper.playMagic();
+    Get.snackbar(
+      title,
+      body,
+      snackPosition: SnackPosition.TOP,
+      duration: const Duration(seconds: 4),
+    );
   }
 
   @override
@@ -247,6 +295,9 @@ class HomeController extends GetxController {
               partnerData.value = partner;
             });
       }
+
+      // Update current user's last active timestamp
+      _dbService.updateLastActive(userModel.uid);
     } catch (e) {
       errorMessage.value = 'Gagal memuat data: $e';
     } finally {
@@ -609,7 +660,8 @@ class HomeController extends GetxController {
     _showInteractionDialog();
 
     if (partnerId != null) {
-      _dbService.pokePartner(partnerId!);
+      // Send notification to partner
+      _dbService.sendPartnerNotification(partnerId!, userName, 'colek');
     }
 
     Future.delayed(const Duration(seconds: 2), () {
@@ -636,6 +688,11 @@ class HomeController extends GetxController {
     updateQuestProgress('interaction');
     _showInteractionDialog();
 
+    // Send notification to partner
+    if (partnerId != null) {
+      _dbService.sendPartnerNotification(partnerId!, userName, 'rindu');
+    }
+
     Future.delayed(const Duration(seconds: 2), () {
       Get.snackbar(
         '❤️ Rindu Terkirim!',
@@ -652,6 +709,12 @@ class HomeController extends GetxController {
 
     SoundHelper.playMagic();
     updateQuestProgress('interaction');
+
+    // Send notification to partner
+    if (partnerId != null) {
+      _dbService.sendPartnerNotification(partnerId!, userName, 'cek_app');
+    }
+
     Get.snackbar(
       '📢 Notif Terkirim!',
       '$partnerName akan segera buka app!',

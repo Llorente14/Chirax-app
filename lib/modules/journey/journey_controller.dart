@@ -223,217 +223,227 @@ class JourneyController extends GetxController {
 
     SoundHelper.playSwipe();
     Get.bottomSheet(
-      Container(
-        padding: const EdgeInsets.all(20),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(36),
-            topRight: Radius.circular(36),
+      SafeArea(
+        top: false,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(36),
+              topRight: Radius.circular(36),
+            ),
           ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Handle bar
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 20),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-
-            // Title
-            Text(
-              'Tambah Event 📅',
-              style: AppTextStyles.headline.copyWith(fontSize: 20),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Event Title Input - Juicy 3D Style
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.neutralShadow, width: 3),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.neutralShadow,
-                    offset: const Offset(0, 4),
-                    blurRadius: 0,
-                  ),
-                ],
-              ),
-              child: TextField(
-                controller: titleController,
-                decoration: InputDecoration(
-                  hintText: 'Nama Event',
-                  hintStyle: AppTextStyles.body.copyWith(
-                    color: AppColors.textSecondary.withValues(alpha: 0.5),
-                  ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 16,
-                  ),
-                ),
-                style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w700),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Category Selection - Wrap Style
-            Obx(
-              () => Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: List.generate(EventCategory.categories.length, (i) {
-                  final cat = EventCategory.categories[i];
-                  final isSelected = selectedCategoryIndex.value == i;
-                  return GestureDetector(
-                    onTap: () => selectedCategoryIndex.value = i,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? cat.color.withValues(alpha: 0.15)
-                            : Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: isSelected ? cat.color : Colors.grey.shade300,
-                          width: 2,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(cat.icon, style: const TextStyle(fontSize: 14)),
-                          const SizedBox(width: 6),
-                          Text(
-                            cat.label,
-                            style: AppTextStyles.bodySmall.copyWith(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                              color: isSelected
-                                  ? cat.color
-                                  : AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Surprise Toggle
-            Obx(
-              () => GestureDetector(
-                onTap: () => isSurpriseEvent.toggle(),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 14,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isSurpriseEvent.value
-                        ? JourneyEvent.surpriseColor.withValues(alpha: 0.15)
-                        : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isSurpriseEvent.value
-                          ? JourneyEvent.surpriseColor
-                          : Colors.grey.shade300,
-                      width: 2,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        isSurpriseEvent.value ? '🎁' : '🤫',
-                        style: const TextStyle(fontSize: 18),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Jadikan Surprise',
-                        style: AppTextStyles.body.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: isSurpriseEvent.value
-                              ? JourneyEvent.surpriseColor
-                              : AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Add Button (Bouncy 3D)
-            GestureDetector(
-              onTap: () {
-                if (titleController.text.isEmpty) {
-                  Get.snackbar(
-                    '⚠️ Oops!',
-                    'Nama event tidak boleh kosong',
-                    snackPosition: SnackPosition.TOP,
-                  );
-                  return;
-                }
-                addEvent(
-                  title: titleController.text,
-                  date: selectedDay.value,
-                  categoryIndex: selectedCategoryIndex.value,
-                  isSurprise: isSurpriseEvent.value,
-                );
-                Get.back();
-              },
-              child: Container(
-                width: double.infinity,
-                height: 60,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(
-                  color: AppColors.primary,
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+
+              // Title
+              Text(
+                'Tambah Event 📅',
+                style: AppTextStyles.headline.copyWith(fontSize: 20),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Event Title Input - Juicy 3D Style
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: const [
+                  border: Border.all(color: AppColors.neutralShadow, width: 3),
+                  boxShadow: [
                     BoxShadow(
-                      color: AppColors.primaryShadow,
-                      offset: Offset(0, 5),
+                      color: AppColors.neutralShadow,
+                      offset: const Offset(0, 4),
                       blurRadius: 0,
                     ),
                   ],
                 ),
-                child: Center(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('✨', style: TextStyle(fontSize: 24)),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Tambah Event',
-                        style: AppTextStyles.button.copyWith(fontSize: 18),
-                      ),
-                    ],
+                child: TextField(
+                  controller: titleController,
+                  decoration: InputDecoration(
+                    hintText: 'Nama Event',
+                    hintStyle: AppTextStyles.body.copyWith(
+                      color: AppColors.textSecondary.withValues(alpha: 0.5),
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
+                  ),
+                  style: AppTextStyles.body.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-            ),
 
-            const SizedBox(height: 8),
-          ],
+              const SizedBox(height: 20),
+
+              // Category Selection - Wrap Style
+              Obx(
+                () => Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: List.generate(EventCategory.categories.length, (i) {
+                    final cat = EventCategory.categories[i];
+                    final isSelected = selectedCategoryIndex.value == i;
+                    return GestureDetector(
+                      onTap: () => selectedCategoryIndex.value = i,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? cat.color.withValues(alpha: 0.15)
+                              : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: isSelected
+                                ? cat.color
+                                : Colors.grey.shade300,
+                            width: 2,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              cat.icon,
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              cat.label,
+                              style: AppTextStyles.bodySmall.copyWith(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                                color: isSelected
+                                    ? cat.color
+                                    : AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Surprise Toggle
+              Obx(
+                () => GestureDetector(
+                  onTap: () => isSurpriseEvent.toggle(),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSurpriseEvent.value
+                          ? JourneyEvent.surpriseColor.withValues(alpha: 0.15)
+                          : Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSurpriseEvent.value
+                            ? JourneyEvent.surpriseColor
+                            : Colors.grey.shade300,
+                        width: 2,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          isSurpriseEvent.value ? '🎁' : '🤫',
+                          style: const TextStyle(fontSize: 18),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Jadikan Surprise',
+                          style: AppTextStyles.body.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: isSurpriseEvent.value
+                                ? JourneyEvent.surpriseColor
+                                : AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Add Button (Bouncy 3D)
+              GestureDetector(
+                onTap: () {
+                  if (titleController.text.isEmpty) {
+                    Get.snackbar(
+                      '⚠️ Oops!',
+                      'Nama event tidak boleh kosong',
+                      snackPosition: SnackPosition.TOP,
+                    );
+                    return;
+                  }
+                  addEvent(
+                    title: titleController.text,
+                    date: selectedDay.value,
+                    categoryIndex: selectedCategoryIndex.value,
+                    isSurprise: isSurpriseEvent.value,
+                  );
+                  Get.back();
+                },
+                child: Container(
+                  width: double.infinity,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: AppColors.primaryShadow,
+                        offset: Offset(0, 5),
+                        blurRadius: 0,
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text('✨', style: TextStyle(fontSize: 24)),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Tambah Event',
+                          style: AppTextStyles.button.copyWith(fontSize: 18),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
       ),
       isScrollControlled: true,

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
@@ -139,19 +140,20 @@ class HomeView extends GetView<HomeController> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: Image.asset(
-                            controller.partnerAvatar,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
+                          child: Obx(() {
+                            final avatar = controller.partnerAvatar;
+                            final partnerName = controller.partnerName;
+
+                            // Handle DEFAULT or empty - show initial
+                            if (avatar == 'DEFAULT' || avatar.isEmpty) {
                               return Container(
                                 color: AppColors.secondary.withValues(
                                   alpha: 0.2,
                                 ),
                                 child: Center(
                                   child: Text(
-                                    controller.partnerName.isNotEmpty
-                                        ? controller.partnerName[0]
-                                              .toUpperCase()
+                                    partnerName.isNotEmpty
+                                        ? partnerName[0].toUpperCase()
                                         : '💕',
                                     style: AppTextStyles.title.copyWith(
                                       color: AppColors.secondary,
@@ -160,29 +162,87 @@ class HomeView extends GetView<HomeController> {
                                   ),
                                 ),
                               );
-                            },
-                          ),
+                            }
+
+                            // Handle base64
+                            if (avatar.startsWith('base64:')) {
+                              return Image.memory(
+                                base64Decode(
+                                  avatar.replaceFirst('base64:', ''),
+                                ),
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  color: AppColors.secondary.withValues(
+                                    alpha: 0.2,
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      partnerName.isNotEmpty
+                                          ? partnerName[0].toUpperCase()
+                                          : '💕',
+                                      style: AppTextStyles.title.copyWith(
+                                        color: AppColors.secondary,
+                                        fontSize: 18,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+
+                            // Handle asset path
+                            return Image.asset(
+                              avatar,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: AppColors.secondary.withValues(
+                                    alpha: 0.2,
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      partnerName.isNotEmpty
+                                          ? partnerName[0].toUpperCase()
+                                          : '💕',
+                                      style: AppTextStyles.title.copyWith(
+                                        color: AppColors.secondary,
+                                        fontSize: 18,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          }),
                         ),
                       ),
-                      // Status Emoji Badge
+                      // Status Emoji Badge - Online/Offline
                       Positioned(
                         right: -4,
                         bottom: -2,
-                        child: Container(
-                          width: 22,
-                          height: 22,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: AppColors.secondary,
-                              width: 2,
+                        child: Obx(() {
+                          final isOnline = controller.isPartnerOnline;
+                          return Container(
+                            width: 22,
+                            height: 22,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isOnline
+                                    ? AppColors.success
+                                    : Colors.grey.shade400,
+                                width: 2,
+                              ),
                             ),
-                          ),
-                          child: const Center(
-                            child: Text('💚', style: TextStyle(fontSize: 12)),
-                          ),
-                        ),
+                            child: Center(
+                              child: Text(
+                                isOnline ? '💚' : '😴',
+                                style: const TextStyle(fontSize: 10),
+                              ),
+                            ),
+                          );
+                        }),
                       ),
                     ],
                   ),
@@ -274,279 +334,346 @@ class HomeView extends GetView<HomeController> {
 
     SoundHelper.playSwipe();
     Get.bottomSheet(
-      Container(
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(28),
-            topRight: Radius.circular(28),
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Handle bar
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 20),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
+      SafeArea(
+        top: false,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(28),
+              topRight: Radius.circular(28),
             ),
-
-            // Partner Avatar (Large)
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                // Shadow
-                Container(
-                  margin: const EdgeInsets.only(top: 5),
-                  width: 90,
-                  height: 90,
-                  decoration: BoxDecoration(
-                    color: AppColors.secondary,
-                    borderRadius: BorderRadius.circular(28),
-                  ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                // Avatar
-                Container(
-                  width: 90,
-                  height: 90,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(color: AppColors.secondary, width: 4),
+              ),
+
+              // Partner Avatar (Large)
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  // Shadow
+                  Container(
+                    margin: const EdgeInsets.only(top: 5),
+                    width: 90,
+                    height: 90,
+                    decoration: BoxDecoration(
+                      color: AppColors.secondary,
+                      borderRadius: BorderRadius.circular(28),
+                    ),
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(23),
-                    child: Image.asset(
-                      controller.partnerAvatar,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: AppColors.secondary.withValues(alpha: 0.2),
-                          child: Center(
-                            child: Text(
-                              controller.partnerName.isNotEmpty
-                                  ? controller.partnerName[0].toUpperCase()
-                                  : '💞',
-                              style: AppTextStyles.headline.copyWith(
-                                color: AppColors.secondary,
+                  // Avatar
+                  Container(
+                    width: 90,
+                    height: 90,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(color: AppColors.secondary, width: 4),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(23),
+                      child: Builder(
+                        builder: (context) {
+                          final avatar = controller.partnerAvatar;
+                          final partnerName = controller.partnerName;
+
+                          // Handle DEFAULT or empty - show initial
+                          if (avatar == 'DEFAULT' || avatar.isEmpty) {
+                            return Container(
+                              color: AppColors.secondary.withValues(alpha: 0.2),
+                              child: Center(
+                                child: Text(
+                                  partnerName.isNotEmpty
+                                      ? partnerName[0].toUpperCase()
+                                      : '💞',
+                                  style: AppTextStyles.headline.copyWith(
+                                    color: AppColors.secondary,
+                                  ),
+                                ),
                               ),
+                            );
+                          }
+
+                          // Handle base64
+                          if (avatar.startsWith('base64:')) {
+                            return Image.memory(
+                              base64Decode(avatar.replaceFirst('base64:', '')),
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                color: AppColors.secondary.withValues(
+                                  alpha: 0.2,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    partnerName.isNotEmpty
+                                        ? partnerName[0].toUpperCase()
+                                        : '💞',
+                                    style: AppTextStyles.headline.copyWith(
+                                      color: AppColors.secondary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+
+                          // Handle asset path
+                          return Image.asset(
+                            avatar,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: AppColors.secondary.withValues(
+                                  alpha: 0.2,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    partnerName.isNotEmpty
+                                        ? partnerName[0].toUpperCase()
+                                        : '💞',
+                                    style: AppTextStyles.headline.copyWith(
+                                      color: AppColors.secondary,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  // Online indicator
+                  Positioned(
+                    right: -4,
+                    bottom: 0,
+                    child: Obx(() {
+                      final isOnline = controller.isPartnerOnline;
+                      return Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: isOnline
+                              ? AppColors.success
+                              : Colors.grey.shade400,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 3),
+                        ),
+                        child: Center(
+                          child: Text(
+                            isOnline ? '💚' : '😴',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // Partner Name
+              Text(
+                controller.partnerName,
+                style: AppTextStyles.headline.copyWith(fontSize: 24),
+              ),
+
+              const SizedBox(height: 4),
+
+              // Status Text
+              Obx(() {
+                final isOnline = controller.isPartnerOnline;
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      isOnline ? '💚' : '😴',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      isOnline ? 'Online' : 'Offline',
+                      style: AppTextStyles.body.copyWith(
+                        color: isOnline ? AppColors.success : Colors.grey,
+                      ),
+                    ),
+                  ],
+                );
+              }),
+
+              const SizedBox(height: 20),
+
+              // Stats Row
+              Obx(
+                () => Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // XP
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.moneyOrange.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Text('✨', style: TextStyle(fontSize: 16)),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${controller.totalXP} XP',
+                            style: AppTextStyles.bodySmall.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.moneyOrange,
                             ),
                           ),
-                        );
-                      },
+                        ],
+                      ),
                     ),
-                  ),
-                ),
-                // Online indicator
-                Positioned(
-                  right: -4,
-                  bottom: 0,
-                  child: Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: AppColors.success,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 3),
+                    const SizedBox(width: 12),
+                    // Streak
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.secondary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Text('🔥', style: TextStyle(fontSize: 16)),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${controller.streakCount} Streak',
+                            style: AppTextStyles.bodySmall.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.secondary,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    child: const Center(
-                      child: Text('💚', style: TextStyle(fontSize: 14)),
-                    ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
 
-            const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
-            // Partner Name
-            Text(
-              controller.partnerName,
-              style: AppTextStyles.headline.copyWith(fontSize: 24),
-            ),
-
-            const SizedBox(height: 4),
-
-            // Status Text
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text('💚', style: TextStyle(fontSize: 16)),
-                const SizedBox(width: 6),
-                Text(
-                  'Online',
-                  style: AppTextStyles.body.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 20),
-
-            // Stats Row
-            Obx(
-              () => Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              // Action Buttons
+              Row(
                 children: [
-                  // XP
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.moneyOrange.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        const Text('✨', style: TextStyle(fontSize: 16)),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${controller.totalXP} XP',
-                          style: AppTextStyles.bodySmall.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.moneyOrange,
+                  // Colek Button
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        Get.back();
+                        controller.pokePartner();
+                      },
+                      child: Container(
+                        height: 54,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primaryShadow,
+                              offset: const Offset(0, 4),
+                              blurRadius: 0,
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            '👋 Colek',
+                            style: AppTextStyles.button.copyWith(fontSize: 14),
                           ),
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  // Streak
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.secondary.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        const Text('🔥', style: TextStyle(fontSize: 16)),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${controller.streakCount} Streak',
-                          style: AppTextStyles.bodySmall.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.secondary,
+                  const SizedBox(width: 10),
+                  // Rindu Button
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        Get.back();
+                        controller.sendLove();
+                      },
+                      child: Container(
+                        height: 54,
+                        decoration: BoxDecoration(
+                          color: AppColors.secondary,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: AppColors.secondaryShadow,
+                              offset: Offset(0, 4),
+                              blurRadius: 0,
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            '❤️ Rindu',
+                            style: AppTextStyles.button.copyWith(fontSize: 14),
                           ),
                         ),
-                      ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  // Notif Button
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        Get.back();
+                        controller.notifyPartner();
+                      },
+                      child: Container(
+                        height: 54,
+                        decoration: BoxDecoration(
+                          color: AppColors.success,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.successShadow,
+                              offset: const Offset(0, 4),
+                              blurRadius: 0,
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            '📢 Cek App',
+                            style: AppTextStyles.button.copyWith(fontSize: 14),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
-            ),
 
-            const SizedBox(height: 24),
-
-            // Action Buttons
-            Row(
-              children: [
-                // Colek Button
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      Get.back();
-                      controller.pokePartner();
-                    },
-                    child: Container(
-                      height: 54,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primaryShadow,
-                            offset: const Offset(0, 4),
-                            blurRadius: 0,
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Text(
-                          '👋 Colek',
-                          style: AppTextStyles.button.copyWith(fontSize: 14),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                // Rindu Button
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      Get.back();
-                      controller.sendLove();
-                    },
-                    child: Container(
-                      height: 54,
-                      decoration: BoxDecoration(
-                        color: AppColors.secondary,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: AppColors.secondaryShadow,
-                            offset: Offset(0, 4),
-                            blurRadius: 0,
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Text(
-                          '❤️ Rindu',
-                          style: AppTextStyles.button.copyWith(fontSize: 14),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                // Notif Button
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      Get.back();
-                      controller.notifyPartner();
-                    },
-                    child: Container(
-                      height: 54,
-                      decoration: BoxDecoration(
-                        color: AppColors.success,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.successShadow,
-                            offset: const Offset(0, 4),
-                            blurRadius: 0,
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Text(
-                          '📢 Cek App',
-                          style: AppTextStyles.button.copyWith(fontSize: 14),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-          ],
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
       ),
       isScrollControlled: true,

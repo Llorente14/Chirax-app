@@ -56,14 +56,19 @@ class ChiraxApp extends StatelessWidget {
 
       // Lock Screen Gate - overlays entire app when locked
       builder: (context, child) {
+        // Ensure child is never null - wrap with fallback
+        final appChild =
+            child ??
+            const Scaffold(body: Center(child: CircularProgressIndicator()));
+
         return Obx(() {
           // If security is enabled AND app is locked, show lock screen
           if (securityController.isEnabled.value &&
               securityController.isLocked.value) {
             return const LockScreenView();
           }
-          // Otherwise show normal app content
-          return child ?? const SizedBox.shrink();
+          // Otherwise show normal app content with proper background
+          return Material(color: AppColors.offWhite, child: appChild);
         });
       },
 
